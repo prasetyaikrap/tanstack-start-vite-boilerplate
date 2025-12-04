@@ -45,6 +45,8 @@ type QueryData<TQueryFnData> = {
 type QueryError = {
 	success: boolean;
 	message: string;
+	data?: unknown;
+	error?: unknown;
 };
 
 export type UseListReturnType<
@@ -85,17 +87,16 @@ export function useList<
 		] as TQueryKey,
 		queryFn: async ({ queryKey }) => {
 			const { resource, id } = queryKey[1] as BaseQueryKey;
-			const { success, data, message } = await dataProviders[
-				dataProviderName
-			].getOne({
-				resource: resource as Exclude<typeof resource, undefined>,
-				id: id as Exclude<typeof id, undefined>,
-				meta: meta,
-			});
-			if (!success) {
-				return Promise.reject({ success, message });
+			try {
+				const { data } = await dataProviders[dataProviderName].getOne({
+					resource: resource as Exclude<typeof resource, undefined>,
+					id: id as Exclude<typeof id, undefined>,
+					meta: meta,
+				});
+				return { data: data as TQueryFnData };
+			} catch (error) {
+				return Promise.reject(error);
 			}
-			return { data: data as TQueryFnData };
 		},
 		enabled: (queryOptions?.enabled ?? true) && Boolean(resource),
 	});

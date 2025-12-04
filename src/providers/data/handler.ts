@@ -13,7 +13,7 @@ import type { GetListMetaQuery, ResponseBody, ResponsesBody } from "./type";
 export function responseOk<T extends BaseRecord>(res: RestResponse) {
 	const responseBody = res.body as unknown as ResponseBody<T>;
 	if (res.status < 200 || res.status >= 300) {
-		throw new HTTPError(responseBody?.message, res.status, responseBody);
+		throw new HTTPError(responseBody?.message, res.status, responseBody.error);
 	}
 
 	return responseBody;
@@ -22,14 +22,66 @@ export function responseOk<T extends BaseRecord>(res: RestResponse) {
 export function responsesOk<T extends BaseRecord>(res: RestResponse) {
 	const responsesBody = res.body as unknown as ResponsesBody<T>;
 	if (res.status < 200 || res.status >= 300) {
-		throw new HTTPError(responsesBody?.message, res.status, responsesBody);
+		throw new HTTPError(
+			responsesBody?.message,
+			res.status,
+			responsesBody.error,
+		);
 	}
 
 	return responsesBody;
 }
 
-export function responseError(err: RestResponse) {
-	return Promise.reject(err.body);
+export function responseError(err: RestResponse | HTTPError) {
+	if (err instanceof HTTPError) {
+		return Promise.reject({
+			success: false,
+			message: err.message,
+			data: null,
+			error: err.error,
+		});
+	}
+	const responseErrorBody = err.body;
+	return Promise.reject({
+		success: false,
+		message: (responseErrorBody as any)?.message || "Something went wrong",
+		data: null,
+		error: responseErrorBody,
+	});
+}
+
+export function responsesError(err: RestResponse | HTTPError) {
+	if (err instanceof HTTPError) {
+		return Promise.reject({
+			success: false,
+			message: err.message,
+			data: null,
+			metadata: {
+				total_rows: 0,
+				total_page: 0,
+				current_page: 0,
+				per_page: 0,
+				previousCursor: "",
+				nextCursor: "",
+			},
+			error: err.error,
+		});
+	}
+	const responsesErrorBody = err.body;
+	return Promise.reject({
+		success: false,
+		message: (responsesErrorBody as any)?.message || "Something went wrong",
+		data: null,
+		metadata: {
+			total_rows: 0,
+			total_page: 0,
+			current_page: 0,
+			per_page: 0,
+			previousCursor: "",
+			nextCursor: "",
+		},
+		error: responsesErrorBody,
+	});
 }
 
 export function generateParams(

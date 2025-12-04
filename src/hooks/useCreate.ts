@@ -32,6 +32,8 @@ type ExtractResourceKeys<T> = T extends DataProvider<infer R> ? R : never;
 type MutationError = {
 	success: boolean;
 	message: string;
+	data?: unknown;
+	error?: unknown;
 };
 
 export function useCreate<
@@ -53,17 +55,16 @@ export function useCreate<
 	const mutation = useMutation({
 		...mutationOptions,
 		mutationFn: async (variables) => {
-			const { success, data, message } = await dataProviders[
-				dataProviderName
-			].create({
-				resource,
-				variables: variables as Record<string, unknown>,
-				meta,
-			});
-			if (!success) {
-				return Promise.reject({ success, message });
+			try {
+				const { data } = await dataProviders[dataProviderName].create({
+					resource,
+					variables: variables as Record<string, unknown>,
+					meta,
+				});
+				return { data } as TData;
+			} catch (error) {
+				return Promise.reject(error);
 			}
-			return { data } as TData;
 		},
 	});
 

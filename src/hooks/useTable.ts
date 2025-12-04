@@ -39,7 +39,9 @@ type QueryData<TQueryFnData> = {
 
 type QueryError = {
 	success: boolean;
+	data?: unknown;
 	message: string;
+	error?: unknown;
 };
 
 type ProviderProps = {
@@ -129,19 +131,20 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 		queryFn: async ({ queryKey }) => {
 			const { resource, pagination, filters, sorters, meta } =
 				queryKey[1] as BaseQueryKey;
-			const { success, data, message, metadata } = await dataProviders[
-				dataProviderName
-			].getList({
-				resource: resource as Exclude<typeof resource, undefined>,
-				pagination: pagination,
-				filters: filters,
-				sorters: sorters,
-				meta: meta,
-			});
-			if (!success) {
-				return Promise.reject({ success, message });
+			try {
+				const { data, metadata } = await dataProviders[
+					dataProviderName
+				].getList({
+					resource: resource as Exclude<typeof resource, undefined>,
+					pagination: pagination,
+					filters: filters,
+					sorters: sorters,
+					meta: meta,
+				});
+				return { data: data as TQueryFnData[], metadata };
+			} catch (error) {
+				return Promise.reject(error);
 			}
-			return { data: data as TQueryFnData[], metadata };
 		},
 		enabled: isServerSide && isQueryEnabled && Boolean(resource),
 	});

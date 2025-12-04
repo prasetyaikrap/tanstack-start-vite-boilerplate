@@ -8,6 +8,7 @@ import type {
 } from "@/providers/data/api/type";
 import { defaultFetcher } from "@/providers/fetcher";
 import initRestClient from "@/providers/rest-client";
+import type { RestResponse } from "@/providers/rest-client/type";
 import { deleteCookies, getCookies, setCookies } from "@/utils/general";
 import type { AuthActionResponse, AuthProvider, CheckResponse } from "./type";
 
@@ -35,32 +36,46 @@ export const authProvider: AuthProvider = {
 		code,
 		redirectTo = "/dashboard",
 	}: LoginParams): Promise<AuthActionResponse> => {
-		const { status, body } =
-			await authService.authExchange<AuthExchangeResponse>({
-				payload: { grant_type, code },
-			});
+		try {
+			const { status, body } =
+				await authService.authExchange<AuthExchangeResponse>({
+					payload: { grant_type, code },
+				});
 
-		if (status !== 200) {
+			if (status !== 200) {
+				return {
+					success: false,
+					redirectTo: "/login",
+					error: {
+						type: "provider_auth_login",
+						message: body.message || "Something Went Wrong",
+					},
+				};
+			}
+
+			const { access_token, refresh_token } = body.data;
+			await setCookies([
+				{ name: COOKIES.accessToken, value: access_token },
+				{ name: COOKIES.refreshToken, value: refresh_token },
+			]);
+
+			return {
+				success: true,
+				redirectTo,
+			};
+		} catch (error) {
 			return {
 				success: false,
 				redirectTo: "/login",
 				error: {
 					type: "provider_auth_login",
-					message: body.message || "Something Went Wrong",
+					message:
+						(error as RestResponse<{ message: string }>)?.body?.message ||
+						"Something Went Wrong",
+					error: error,
 				},
 			};
 		}
-
-		const { access_token, refresh_token } = body.data;
-		await setCookies([
-			{ name: COOKIES.accessToken, value: access_token },
-			{ name: COOKIES.refreshToken, value: refresh_token },
-		]);
-
-		return {
-			success: true,
-			redirectTo,
-		};
 	},
 	check: async (params: CheckParams): Promise<CheckResponse> => {
 		const protectedResources = ["protected"];
@@ -70,54 +85,85 @@ export const authProvider: AuthProvider = {
 			});
 		}
 
-		const { status, body } = await authService.authVerify<AuthVerifyResponse>();
+		try {
+			const { status, body } =
+				await authService.authVerify<AuthVerifyResponse>();
 
-		if (status !== 200) {
+			if (status !== 200) {
+				return {
+					authenticated: false,
+					redirectTo: "/login",
+					logout: true,
+					error: {
+						type: "provider_auth_check",
+						message: body.message || "Authentication Failed",
+					},
+				};
+			}
+
+			const { access_token, refresh_token } = body.data;
+			await setCookies([
+				{ name: COOKIES.accessToken, value: access_token },
+				{ name: COOKIES.refreshToken, value: refresh_token },
+			]);
+
+			return {
+				authenticated: true,
+			};
+		} catch (error) {
 			return {
 				authenticated: false,
 				redirectTo: "/login",
 				logout: true,
 				error: {
 					type: "provider_auth_check",
-					message: body.message || "Authentication Failed",
+					message:
+						(error as RestResponse<{ message: string }>)?.body?.message ||
+						"Authentication Failed",
+					error: error,
 				},
 			};
 		}
-
-		const { access_token, refresh_token } = body.data;
-		await setCookies([
-			{ name: COOKIES.accessToken, value: access_token },
-			{ name: COOKIES.refreshToken, value: refresh_token },
-		]);
-
-		return {
-			authenticated: true,
-		};
 	},
 	logout: async (): Promise<AuthActionResponse> => {
-		const [refreshTokenCookie] = await getCookies([COOKIES.refreshToken]);
-		const { status, body } = await authService.authLogout<AuthLogoutResponse>({
-			headers: {
-				Authorization: `Bearer ${refreshTokenCookie?.value ?? ""}`,
-			},
-		});
+		try {
+			const [refreshTokenCookie] = await getCookies([COOKIES.refreshToken]);
+			const { status, body } = await authService.authLogout<AuthLogoutResponse>(
+				{
+					headers: {
+						Authorization: `Bearer ${refreshTokenCookie?.value ?? ""}`,
+					},
+				},
+			);
 
-		if (status !== 200) {
+			if (status !== 200) {
+				return {
+					success: false,
+					error: {
+						type: "provider_auth_logout",
+						message: body.message || "Logout Failed",
+					},
+				};
+			}
+
+			await deleteCookies([COOKIES.accessToken, COOKIES.refreshToken]);
+
+			return {
+				success: true,
+				redirectTo: "/login",
+			};
+		} catch (error) {
 			return {
 				success: false,
 				error: {
 					type: "provider_auth_logout",
-					message: body.message || "Logout Failed",
+					message:
+						(error as RestResponse<{ message: string }>)?.body?.message ||
+						"Logout Failed",
+					error: error,
 				},
 			};
 		}
-
-		await deleteCookies([COOKIES.accessToken, COOKIES.refreshToken]);
-
-		return {
-			success: true,
-			redirectTo: "/login",
-		};
 	},
 	//   getIdentity: async (params: any): Promise<IdentityResponse> => {},
 	// optional methods
