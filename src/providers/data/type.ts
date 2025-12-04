@@ -47,12 +47,17 @@ export type BaseAxiosClientResponse<T = unknown> = {
 	headers: Headers;
 };
 
-export type MetaQuery = {
-	transformFilters?: (filters?: CrudFilters) => CrudFilters;
-	transformSorters?: (sorters?: CrudSorting) => CrudSorting;
-	paginationMode?: "default" | "per_page" | "cursor" | "infinite" | "none";
-	filterMode?: "default";
-} & Record<string, any>;
+export type MetaQuery = Record<string, any>;
+export type GetListMetaQuery = MetaQuery & {
+	filterMode?: "and" | "or";
+	transformFilters?: (filters: CrudFilters) => CrudFilters;
+	transformSorters?: (sorters: CrudSorting) => CrudSorting;
+	paginationMode?: "server" | "client" | "infinite" | "none" | "cursor";
+};
+export type GetOneMetaQuery = MetaQuery;
+export type CreateMetaQuery = MetaQuery;
+export type UpdateMetaQuery = MetaQuery;
+export type DeleteMetaQuery = MetaQuery;
 
 export type DataProvider<TResource extends string = string> = {
 	getList: (params: GetListParams<TResource>) => Promise<GetListResponse>;
@@ -67,13 +72,13 @@ export type GetListParams<TResource extends string = string> = {
 	pagination?: Pagination;
 	sorters?: CrudSort[];
 	filters?: CrudFilter[];
-	meta?: MetaQuery;
+	meta?: GetListMetaQuery;
 };
 
 export type GetOneParams<TResource extends string = string> = {
 	resource: TResource;
 	id?: BaseKey;
-	meta?: MetaQuery;
+	meta?: GetOneMetaQuery;
 };
 
 type CreateParams<
@@ -82,21 +87,23 @@ type CreateParams<
 > = {
 	resource: TResource;
 	variables: TVariables;
-	meta?: MetaQuery;
+	meta?: CreateMetaQuery;
 };
 type UpdateParams<
 	TResource extends string = string,
 	TVariables = Record<string, unknown>,
 > = {
 	resource: TResource;
-	id: BaseKey;
 	variables: TVariables;
-	meta?: MetaQuery;
+	meta?: UpdateMetaQuery;
 };
-type DeleteParams<TResource extends string = string> = {
+type DeleteParams<
+	TResource extends string = string,
+	TVariables = Record<string, unknown>,
+> = {
 	resource: TResource;
-	id: BaseKey;
-	meta?: MetaQuery;
+	variables: TVariables;
+	meta?: DeleteMetaQuery;
 };
 
 export type GetListResponse<TData = unknown> = ResponsesBody<TData>;

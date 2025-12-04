@@ -8,7 +8,7 @@ import type {
 	Pagination,
 } from "@/types/pagination";
 import { HTTPError } from "@/utils/exceptions";
-import type { MetaQuery, ResponseBody, ResponsesBody } from "./type";
+import type { GetListMetaQuery, ResponseBody, ResponsesBody } from "./type";
 
 export function responseOk<T extends BaseRecord>(res: RestResponse) {
 	const responseBody = res.body as unknown as ResponseBody<T>;
@@ -37,10 +37,10 @@ export function generateParams(
 	sorters: CrudSorting = [],
 	pagination: Pagination = { currentPage: 1, pageSize: 10, mode: "server" },
 	opts?: {
-		filterMode?: MetaQuery["filterMode"];
-		transformFilters?: MetaQuery["transformFilters"];
-		transformSorters?: MetaQuery["transformSorters"];
-		paginationMode?: MetaQuery["paginationMode"];
+		filterMode?: GetListMetaQuery["filterMode"];
+		transformFilters?: GetListMetaQuery["transformFilters"];
+		transformSorters?: GetListMetaQuery["transformSorters"];
+		paginationMode?: GetListMetaQuery["paginationMode"];
 	},
 ) {
 	const paramsPagination = match(opts?.paginationMode)

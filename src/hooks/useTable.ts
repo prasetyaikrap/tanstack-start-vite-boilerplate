@@ -13,30 +13,28 @@ import { dataProviders } from "@/providers/data";
 import type { BaseRecord, CrudFilter, CrudSort, Pagination } from "@/types";
 import type {
 	DataProvider,
-	MetaQuery,
+	GetListMetaQuery,
 	ResponsesBody,
 } from "../providers/data/type";
 
-export type UseTableProps<TData extends BaseRecord = BaseRecord> = {
+export type UseTableProps<TQueryFnData extends BaseRecord = BaseRecord> = {
 	providers?: ProviderProps;
-} & Pick<TableOptions<TData>, "columns"> &
-	Partial<Omit<TableOptions<TData>, "columns">>;
+} & Pick<TableOptions<TQueryFnData>, "columns"> &
+	Partial<Omit<TableOptions<TQueryFnData>, "columns">>;
 
 type DataProviders = typeof dataProviders;
 type ExtractResourceKeys<T> = T extends DataProvider<infer R> ? R : never;
-type QueryKey = [
-	"table-data",
-	{
-		resource?: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
-		pagination?: Pagination;
-		filters?: CrudFilter[];
-		sorters?: CrudSort[];
-		meta?: MetaQuery;
-	},
-];
-type QueryData<TData> = {
-	data: ResponsesBody<TData>["data"];
-	metadata: ResponsesBody<TData>["metadata"];
+type BaseQueryKey = {
+	resource?: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
+	pagination?: Pagination;
+	filters?: CrudFilter[];
+	sorters?: CrudSort[];
+	meta?: GetListMetaQuery;
+};
+type QueryKey = ("table-data" | BaseQueryKey | unknown)[];
+type QueryData<TQueryFnData> = {
+	data: ResponsesBody<TQueryFnData>["data"];
+	metadata: ResponsesBody<TQueryFnData>["metadata"];
 };
 
 type QueryError = {
@@ -57,18 +55,22 @@ type ProviderProps = {
 		permanent?: CrudSort[];
 	};
 	syncWithLocation?: boolean;
-	meta?: MetaQuery;
+	meta?: GetListMetaQuery;
 	queryOptions?: {
 		enabled?: boolean;
 	};
 };
 
-export type UseTableReturnType<TData extends BaseRecord = BaseRecord> = {
-	reactTable: Table<TData>;
+export type UseTableReturnType<
+	TQueryFnData extends BaseRecord = BaseRecord,
+	TError extends QueryError = QueryError,
+> = {
+	reactTable: Table<TQueryFnData>;
 	core: {
-		tableQuery: UseQueryResult<QueryData<TData>, QueryError>;
+		tableQuery: UseQueryResult<QueryData<TQueryFnData>, TError>;
 		result: {
-			data: TData[];
+			data: ResponsesBody<TQueryFnData>["data"];
+			metadata?: ResponsesBody<TQueryFnData>["metadata"];
 			total: number;
 		};
 		pageCount: number;
@@ -85,10 +87,10 @@ export type UseTableReturnType<TData extends BaseRecord = BaseRecord> = {
 
 const fallbackEmptyArray: unknown[] = [];
 
-export function useTable<TData extends BaseRecord = BaseRecord>({
+export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 	providers,
 	...reactTableOptions
-}: UseTableProps<TData>): UseTableReturnType<TData> {
+}: UseTableProps<TQueryFnData>): UseTableReturnType<TQueryFnData> {
 	const isFirstRender = useIsFirstRender();
 	const [pagination, setPagination] = useState<Pagination>({
 		pageSize: providers?.pagination?.pageSize ?? 10,
@@ -109,9 +111,9 @@ export function useTable<TData extends BaseRecord = BaseRecord>({
 	const isServerSide = Boolean(providers);
 
 	const queryResult = useQuery<
-		QueryData<TData>,
+		QueryData<TQueryFnData>,
 		QueryError,
-		QueryData<TData>,
+		QueryData<TQueryFnData>,
 		QueryKey
 	>({
 		queryKey: [
@@ -126,7 +128,7 @@ export function useTable<TData extends BaseRecord = BaseRecord>({
 		],
 		queryFn: async ({ queryKey }) => {
 			const { resource, pagination, filters, sorters, meta } =
-				queryKey[1] as Exclude<(typeof queryKey)[number], string>;
+				queryKey[1] as BaseQueryKey;
 			const { success, data, message, metadata } = await dataProviders[
 				dataProviderName
 			].getList({
@@ -139,13 +141,13 @@ export function useTable<TData extends BaseRecord = BaseRecord>({
 			if (!success) {
 				return Promise.reject({ success, message });
 			}
-			return { data: data as TData[], metadata };
+			return { data: data as TQueryFnData[], metadata };
 		},
 		enabled: isServerSide && isQueryEnabled && Boolean(resource),
 	});
 
-	const reactTableProps = useReactTable<TData>({
-		data: queryResult.data?.data ?? (fallbackEmptyArray as TData[]),
+	const reactTableProps = useReactTable<TQueryFnData>({
+		data: queryResult.data?.data ?? (fallbackEmptyArray as TQueryFnData[]),
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: isServerSide ? undefined : getSortedRowModel(),
 		getFilteredRowModel: isServerSide ? undefined : getFilteredRowModel(),
@@ -267,7 +269,8 @@ export function useTable<TData extends BaseRecord = BaseRecord>({
 		core: {
 			tableQuery: queryResult,
 			result: {
-				data: queryResult.data?.data ?? (fallbackEmptyArray as TData[]),
+				data: queryResult.data?.data ?? (fallbackEmptyArray as TQueryFnData[]),
+				metadata: queryResult.data?.metadata,
 				total: queryResult.data?.metadata?.total_rows ?? 0,
 			},
 			pageCount: queryResult.data?.metadata?.total_page ?? 0,
