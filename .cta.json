@@ -1,0 +1,18 @@
+{
+  "projectName": "tanstack-start-vite-boilerplate",
+  "mode": "file-router",
+  "typescript": true,
+  "tailwind": true,
+  "packageManager": "bun",
+  "addOnOptions": {},
+  "git": true,
+  "version": 1,
+  "framework": "react-cra",
+  "chosenAddOns": [
+    "biome",
+    "nitro",
+    "start",
+    "table",
+    "tanstack-query"
+  ]
+}
