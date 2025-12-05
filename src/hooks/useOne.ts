@@ -56,7 +56,7 @@ export type UseListReturnType<
 	tableQuery: UseQueryResult<QueryData<TQueryFnData>, TError>;
 };
 
-export function useList<
+export function useOne<
 	TQueryFnData extends BaseRecord = BaseRecord,
 	TError extends QueryError = QueryError,
 	TQueryKey extends QueryKey = QueryKey,
