@@ -3,6 +3,8 @@ import {
 	type UseMutationResult,
 	useMutation,
 } from "@tanstack/react-query";
+import { createServerFn, useServerFn } from "@tanstack/react-start";
+import z from "zod";
 import { dataProviders } from "@/providers/data";
 import type { CreateMetaQuery, DataProvider } from "@/providers/data/type";
 
@@ -52,14 +54,18 @@ export function useCreate<
 	TVariables,
 	TOnMutateResult
 >): UseCreateReturnType<TData, TError, TVariables, TOnMutateResult> {
+	const createOneHook = useServerFn(createOneServerFn);
 	const mutation = useMutation({
 		...mutationOptions,
 		mutationFn: async (variables) => {
 			try {
-				const { data } = await dataProviders[dataProviderName].create({
-					resource,
-					variables: variables as Record<string, unknown>,
-					meta,
+				const { data } = await createOneHook({
+					data: {
+						dataProviderName,
+						resource,
+						variables: variables as Record<string, unknown>,
+						meta,
+					},
 				});
 				return { data } as TData;
 			} catch (error) {
@@ -70,3 +76,25 @@ export function useCreate<
 
 	return mutation;
 }
+
+const createOneServerFn = createServerFn()
+	.inputValidator(
+		z.custom<{
+			dataProviderName: keyof DataProviders;
+			resource: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
+			variables: Record<string, unknown>;
+			meta?: CreateMetaQuery;
+		}>(),
+	)
+	.handler(async (data) => {
+		const { dataProviderName, resource, variables, meta } = data.data;
+		const { data: createOneData } = await dataProviders[
+			dataProviderName
+		].create({
+			resource,
+			variables,
+			meta,
+		});
+
+		return { data: createOneData as any };
+	});

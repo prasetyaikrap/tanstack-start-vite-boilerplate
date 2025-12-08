@@ -1,4 +1,5 @@
 import type { ColumnDef, RowData } from "@tanstack/table-core";
+import type { CookieSerializeOptions } from "cookie-es";
 import type { CookieAttributes } from "node_modules/@types/js-cookie";
 import type { ReactNode } from "react";
 
@@ -56,3 +57,8 @@ export type CookieType = {
 	name: string;
 	value: string;
 } & CookieAttributes;
+
+export type CookieTypeServer = {
+	name: string;
+	value: string;
+} & CookieSerializeOptions;

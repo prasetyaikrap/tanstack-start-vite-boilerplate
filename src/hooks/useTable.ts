@@ -1,4 +1,5 @@
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
+import { createServerFn, useServerFn } from "@tanstack/react-start";
 import {
 	getCoreRowModel,
 	getFilteredRowModel,
@@ -9,6 +10,7 @@ import {
 } from "@tanstack/react-table";
 import { isEqual } from "lodash";
 import { useEffect, useRef, useState } from "react";
+import z from "zod";
 import { dataProviders } from "@/providers/data";
 import type { BaseRecord, CrudFilter, CrudSort, Pagination } from "@/types";
 import type {
@@ -112,6 +114,8 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 	const resource = providers?.resource;
 	const isServerSide = Boolean(providers);
 
+	const getListTableHook = useServerFn(getListTableServerFn);
+
 	const queryResult = useQuery<
 		QueryData<TQueryFnData>,
 		QueryError,
@@ -132,14 +136,15 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 			const { resource, pagination, filters, sorters, meta } =
 				queryKey[1] as BaseQueryKey;
 			try {
-				const { data, metadata } = await dataProviders[
-					dataProviderName
-				].getList({
-					resource: resource as Exclude<typeof resource, undefined>,
-					pagination: pagination,
-					filters: filters,
-					sorters: sorters,
-					meta: meta,
+				const { data, metadata } = await getListTableHook({
+					data: {
+						dataProviderName,
+						resource,
+						pagination,
+						filters,
+						sorters,
+						meta,
+					},
 				});
 				return { data: data as TQueryFnData[], metadata };
 			} catch (error) {
@@ -289,7 +294,7 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 	};
 }
 
-export const useIsFirstRender = () => {
+const useIsFirstRender = () => {
 	const firstRender = useRef(true);
 
 	useEffect(() => {
@@ -298,3 +303,23 @@ export const useIsFirstRender = () => {
 
 	return firstRender.current;
 };
+
+const getListTableServerFn = createServerFn()
+	.inputValidator(
+		z.custom<{ dataProviderName: keyof DataProviders } & BaseQueryKey>(),
+	)
+	.handler(async (data) => {
+		const { dataProviderName, resource, pagination, filters, sorters, meta } =
+			data.data;
+		const { data: listData, metadata } = await dataProviders[
+			dataProviderName as keyof DataProviders
+		].getList({
+			resource: resource as Exclude<typeof resource, undefined>,
+			pagination: pagination,
+			filters: filters,
+			sorters: sorters,
+			meta: meta,
+		});
+
+		return { data: listData as any[], metadata };
+	});

@@ -36,10 +36,9 @@ export type RestResponse<T = unknown> = {
 	headers: Headers;
 };
 
-export type InitRestClientProps<TRouter> = {
+export type RestClientProps<TRouter> = {
 	baseUrl: string;
 	routers: TRouter;
-	httpClient?: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 };
 
 export type HTTPError = Error & {
@@ -51,11 +50,3 @@ export type InterceptorResponse<T, U> = (
 	value: T,
 	original: U,
 ) => Promise<T> | T;
-export type FetcherInstance = {
-	fetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
-
-	addRequestInterceptor: (fn: InterceptorRequest<RequestInit>) => void;
-	addResponseInterceptor: (
-		fn: InterceptorResponse<Response, RequestInit>,
-	) => void;
-};

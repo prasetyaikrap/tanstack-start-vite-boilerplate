@@ -3,6 +3,8 @@ import {
 	type UseQueryResult,
 	useQuery,
 } from "@tanstack/react-query";
+import { createServerFn, useServerFn } from "@tanstack/react-start";
+import z from "zod";
 import { dataProviders } from "@/providers/data";
 import type {
 	DataProvider,
@@ -36,6 +38,7 @@ type ExtractResourceKeys<T> = T extends DataProvider<infer R> ? R : never;
 type BaseQueryKey = {
 	resource?: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
 	id?: BaseKey;
+	meta?: GetOneMetaQuery;
 };
 type QueryKey = ("useOne" | BaseQueryKey | unknown)[];
 type QueryData<TQueryFnData> = {
@@ -70,6 +73,7 @@ export function useOne<
 	TQueryFnData,
 	TError
 > {
+	const getOneHook = useServerFn(getOneServerFn);
 	const queryResult = useQuery<
 		QueryData<TQueryFnData>,
 		TError,
@@ -88,10 +92,13 @@ export function useOne<
 		queryFn: async ({ queryKey }) => {
 			const { resource, id } = queryKey[1] as BaseQueryKey;
 			try {
-				const { data } = await dataProviders[dataProviderName].getOne({
-					resource: resource as Exclude<typeof resource, undefined>,
-					id: id as Exclude<typeof id, undefined>,
-					meta: meta,
+				const { data } = await getOneHook({
+					data: {
+						dataProviderName,
+						resource,
+						id,
+						meta,
+					},
 				});
 				return { data: data as TQueryFnData };
 			} catch (error) {
@@ -105,3 +112,20 @@ export function useOne<
 		tableQuery: queryResult,
 	};
 }
+
+const getOneServerFn = createServerFn()
+	.inputValidator(
+		z.custom<{ dataProviderName: keyof DataProviders } & BaseQueryKey>(),
+	)
+	.handler(async (data) => {
+		const { dataProviderName, resource, id, meta } = data.data;
+		const { data: oneData } = await dataProviders[
+			dataProviderName as keyof DataProviders
+		].getOne({
+			resource: resource as Exclude<typeof resource, undefined>,
+			id: id as Exclude<typeof id, undefined>,
+			meta,
+		});
+
+		return { data: oneData as any };
+	});

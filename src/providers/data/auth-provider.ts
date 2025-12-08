@@ -1,7 +1,6 @@
 import { match } from "ts-pattern";
 import { ENVS } from "@/configs/envs";
-import { defaultFetcher } from "@/providers/fetcher";
-import initRestClient from "../rest-client";
+import RestClient from "../rest-client";
 import { authRouter } from "./api/auth-schema";
 import type {
 	AuthExchangePayload,
@@ -14,7 +13,11 @@ import type {
 	AuthRenewResponse,
 	AuthVerifyResponse,
 } from "./api/type";
-import { responseError, responseOk } from "./handler";
+import { responseError, responseOk, responsesError } from "./handler";
+import {
+	authRequestInterceptor,
+	authResponseInterceptor,
+} from "./interceptors";
 import type { DataProvider } from "./type";
 
 type ResourceKeys =
@@ -27,11 +30,13 @@ type ResourceKeys =
 	| "test-posts";
 
 export function authProvider(): DataProvider<ResourceKeys> {
-	const service = initRestClient({
+	const client = new RestClient({
 		baseUrl: ENVS.APP_AUTH_SERVICE_HOST,
 		routers: authRouter,
-		httpClient: defaultFetcher,
 	});
+	client.addRequestInterceptor(authRequestInterceptor);
+	client.addResponseInterceptor(authResponseInterceptor);
+	const service = client.init();
 
 	return {
 		getList: async ({ resource }) => {
@@ -42,7 +47,26 @@ export function authProvider(): DataProvider<ResourceKeys> {
 			//   filterMode: meta?.filterMode,
 			// });
 			return match({ resource }).otherwise(() =>
-				Promise.reject("Method not implemented"),
+				Promise.reject(
+					responsesError({
+						status: 500,
+						body: {
+							success: false,
+							message: "Resource not found",
+							data: null,
+							error: "Resource not found",
+							metadata: {
+								total_rows: 0,
+								total_page: 1,
+								current_page: 1,
+								per_page: 0,
+								previousCursor: "",
+								nextCursor: "",
+							},
+						},
+						headers: new Headers(),
+					}),
+				),
 			);
 		},
 		getOne: async ({ resource }) => {
@@ -54,10 +78,18 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.catch(responseError),
 				)
 				.otherwise(() =>
-					Promise.reject({
-						success: false,
-						message: "Resource not found",
-					}),
+					Promise.reject(
+						responsesError({
+							status: 500,
+							body: {
+								success: false,
+								message: "Resource not found",
+								data: null,
+								error: "Resource not found",
+							},
+							headers: new Headers(),
+						}),
+					),
 				);
 		},
 		create: async ({ resource, variables }) => {
@@ -87,10 +119,18 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.catch(responseError),
 				)
 				.otherwise(() =>
-					Promise.reject({
-						success: false,
-						message: "Resource not found",
-					}),
+					Promise.reject(
+						responsesError({
+							status: 500,
+							body: {
+								success: false,
+								message: "Resource not found",
+								data: null,
+								error: "Resource not found",
+							},
+							headers: new Headers(),
+						}),
+					),
 				);
 		},
 		update: async ({ resource }) => {
@@ -102,10 +142,18 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.catch(responseError),
 				)
 				.otherwise(() =>
-					Promise.reject({
-						success: false,
-						message: "Resource not found",
-					}),
+					Promise.reject(
+						responsesError({
+							status: 500,
+							body: {
+								success: false,
+								message: "Resource not found",
+								data: null,
+								error: "Resource not found",
+							},
+							headers: new Headers(),
+						}),
+					),
 				);
 		},
 		delete: async ({ resource }) => {
@@ -117,10 +165,18 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.catch(responseError),
 				)
 				.otherwise(() =>
-					Promise.reject({
-						success: false,
-						message: "Resource not found",
-					}),
+					Promise.reject(
+						responsesError({
+							status: 500,
+							body: {
+								success: false,
+								message: "Resource not found",
+								data: null,
+								error: "Resource not found",
+							},
+							headers: new Headers(),
+						}),
+					),
 				);
 		},
 	};

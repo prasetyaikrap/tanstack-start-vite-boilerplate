@@ -3,6 +3,8 @@ import {
 	type UseQueryResult,
 	useQuery,
 } from "@tanstack/react-query";
+import { createServerFn, useServerFn } from "@tanstack/react-start";
+import z from "zod";
 import { dataProviders } from "@/providers/data";
 import type {
 	DataProvider,
@@ -78,6 +80,7 @@ export function useList<
 	TQueryFnData,
 	TError
 > {
+	const getListHooks = useServerFn(getListServerFn);
 	const queryResult = useQuery<
 		QueryData<TQueryFnData>,
 		TError,
@@ -100,14 +103,15 @@ export function useList<
 				queryKey[1] as BaseQueryKey;
 
 			try {
-				const { data, metadata } = await dataProviders[
-					dataProviderName
-				].getList({
-					resource: resource as Exclude<typeof resource, undefined>,
-					pagination: pagination,
-					filters: filters,
-					sorters: sorters,
-					meta: meta,
+				const { data, metadata } = await getListHooks({
+					data: {
+						dataProviderName,
+						resource,
+						pagination,
+						filters,
+						sorters,
+						meta,
+					},
 				});
 				return { data: data as TQueryFnData[], metadata };
 			} catch (error) {
@@ -121,3 +125,23 @@ export function useList<
 		tableQuery: queryResult,
 	};
 }
+
+const getListServerFn = createServerFn()
+	.inputValidator(
+		z.custom<{ dataProviderName: keyof DataProviders } & BaseQueryKey>(),
+	)
+	.handler(async (data) => {
+		const { dataProviderName, resource, pagination, filters, sorters, meta } =
+			data.data;
+		const { data: listData, metadata } = await dataProviders[
+			dataProviderName as keyof DataProviders
+		].getList({
+			resource: resource as Exclude<typeof resource, undefined>,
+			pagination: pagination,
+			filters: filters,
+			sorters: sorters,
+			meta: meta,
+		});
+
+		return { data: listData as any[], metadata };
+	});
