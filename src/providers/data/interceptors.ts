@@ -1,4 +1,3 @@
-import { redirect } from "@tanstack/react-router";
 import { COOKIES } from "@/configs/cookies";
 import { ENVS } from "@/configs/envs";
 import { HTTPError } from "@/utils/exceptions";
@@ -14,7 +13,9 @@ export async function authRequestInterceptor(config: RequestInit) {
 		headers: {
 			"X-Client-Id": ENVS.APP_ID,
 			"X-Client-Version": ENVS.APP_VERSION,
-			Authorization: `Bearer ${accessToken?.value ?? ""}`,
+			...(accessToken?.value && {
+				Authorization: `Bearer ${accessToken?.value}`,
+			}),
 			...config.headers,
 		},
 	};
@@ -48,7 +49,9 @@ export async function authResponseInterceptor(
 					"X-Client-Id": ENVS.APP_ID,
 					"X-Client-Version": ENVS.APP_VERSION,
 					"X-Renew-Token": "true",
-					Authorization: `Bearer ${refreshToken?.value ?? ""}`,
+					...(refreshToken?.value && {
+						Authorization: `Bearer ${refreshToken?.value}`,
+					}),
 				},
 				cache: "no-store",
 			});
@@ -76,8 +79,6 @@ export async function authResponseInterceptor(
 				{ name: COOKIES.accessToken },
 				{ name: COOKIES.refreshToken },
 			]);
-
-			redirect({ to: "/" });
 		}
 	}
 

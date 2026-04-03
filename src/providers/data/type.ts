@@ -6,6 +6,7 @@ import type {
 	CrudSorting,
 	Pagination,
 } from "@/types/pagination";
+import type { dataProviders } from ".";
 
 export type MethodTypes = "GET" | "DELETE" | "HEAD" | "OPTIONS";
 export type MethodTypesWithBody = "POST" | "PUT" | "PATCH";
@@ -72,13 +73,13 @@ export type GetListParams<TResource extends string = string> = {
 	pagination?: Pagination;
 	sorters?: CrudSort[];
 	filters?: CrudFilter[];
-	meta?: GetListMetaQuery;
+	meta?: MetaQuery;
 };
 
 export type GetOneParams<TResource extends string = string> = {
 	resource: TResource;
 	id?: BaseKey;
-	meta?: GetOneMetaQuery;
+	meta?: MetaQuery;
 };
 
 type CreateParams<
@@ -87,7 +88,7 @@ type CreateParams<
 > = {
 	resource: TResource;
 	variables: TVariables;
-	meta?: CreateMetaQuery;
+	meta?: MetaQuery;
 };
 type UpdateParams<
 	TResource extends string = string,
@@ -95,7 +96,7 @@ type UpdateParams<
 > = {
 	resource: TResource;
 	variables: TVariables;
-	meta?: UpdateMetaQuery;
+	meta?: MetaQuery;
 };
 type DeleteParams<
 	TResource extends string = string,
@@ -103,7 +104,7 @@ type DeleteParams<
 > = {
 	resource: TResource;
 	variables: TVariables;
-	meta?: DeleteMetaQuery;
+	meta?: MetaQuery;
 };
 
 export type GetListResponse<TData = unknown> = ResponsesBody<TData>;
@@ -111,3 +112,6 @@ export type GetOneResponse<TData = unknown> = ResponseBody<TData>;
 export type CreateResponse<TData = unknown> = ResponseBody<TData>;
 export type UpdateResponse<TData = unknown> = ResponseBody<TData>;
 export type DeleteResponse<TData = unknown> = ResponseBody<TData>;
+
+export type DataProviders = typeof dataProviders;
+export type BaseResourceKeys = "health";

@@ -1,3 +1,4 @@
+import type { QueryClient } from "@tanstack/react-query";
 import type { ColumnDef, RowData } from "@tanstack/table-core";
 import type { CookieSerializeOptions } from "cookie-es";
 import type { CookieAttributes } from "node_modules/@types/js-cookie";
@@ -62,3 +63,20 @@ export type CookieTypeServer = {
 	name: string;
 	value: string;
 } & CookieSerializeOptions;
+
+export type UserInfo = {
+	email: string;
+	name: string;
+	avatar: string;
+};
+
+export type AuthState = {
+	isAuthenticated: boolean;
+	user?: UserInfo;
+};
+
+export type MyRouterContext = {
+	queryClient: QueryClient;
+	permissions: string[];
+	authState: AuthState;
+};

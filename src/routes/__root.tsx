@@ -1,5 +1,4 @@
 import { TanStackDevtools } from "@tanstack/react-devtools";
-import type { QueryClient } from "@tanstack/react-query";
 import {
 	createRootRouteWithContext,
 	HeadContent,
@@ -12,11 +11,8 @@ import AppProviders from "@/components/layouts/app-providers";
 import { useTranslation } from "@/hooks/useTranslation";
 import TanStackQueryDevtools from "@/providers/tanstack-query/devtools";
 import appCss from "@/styles/styles.css?url";
+import type { MyRouterContext } from "@/types";
 import { generateMetadata } from "@/utils/metadata";
-
-interface MyRouterContext {
-	queryClient: QueryClient;
-}
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
 	head: () => {

@@ -199,14 +199,14 @@ export default class RestClient<T extends RestRouter = RestRouter> {
 		params?: Record<string, BaseKey>,
 		queries?: URLSearchParams,
 	): string {
-		let fullPath = `${baseUrl}${path}`;
+		let normalizePath = path;
 		if (params) {
-			fullPath = this.replaceRouteParams(fullPath, params);
+			normalizePath = this.replaceRouteParams(normalizePath, params);
 		}
 		if (queries && queries.toString() !== "") {
-			fullPath = `${fullPath}?${queries}`;
+			normalizePath = `${normalizePath}?${queries}`;
 		}
-		return fullPath;
+		return `${baseUrl}${normalizePath}`;
 	}
 
 	private replaceRouteParams(

@@ -50,3 +50,11 @@ export type InterceptorResponse<T, U> = (
 	value: T,
 	original: U,
 ) => Promise<T> | T;
+export type FetcherInstance = {
+	fetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
+
+	addRequestInterceptor: (fn: InterceptorRequest<RequestInit>) => void;
+	addResponseInterceptor: (
+		fn: InterceptorResponse<Response, RequestInit>,
+	) => void;
+};
