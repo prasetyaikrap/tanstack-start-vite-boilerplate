@@ -7,7 +7,7 @@ import { authRouter } from "./api/auth-schema";
 import type { AuthRenewResponse } from "./api/type";
 
 export async function authRequestInterceptor(config: RequestInit) {
-	const [accessToken] = await getCookies([COOKIES.accessToken]);
+	const [accessToken] = await getCookies({ data: [COOKIES.accessToken] });
 	const adjustedConfig: RequestInit = {
 		...config,
 		headers: {
@@ -35,7 +35,7 @@ export async function authResponseInterceptor(
 			routers: authRouter,
 		}).init();
 
-		const [refreshToken] = await getCookies([COOKIES.refreshToken]);
+		const [refreshToken] = await getCookies({ data: [COOKIES.refreshToken] });
 		if (!refreshToken?.value) {
 			return res;
 		}
@@ -62,10 +62,12 @@ export async function authResponseInterceptor(
 
 			const newAccessToken = data.access_token;
 			const newRefreshToken = data.refresh_token;
-			await setCookies([
-				{ name: COOKIES.accessToken, value: newAccessToken },
-				{ name: COOKIES.refreshToken, value: newRefreshToken },
-			]);
+			await setCookies({
+				data: [
+					{ name: COOKIES.accessToken, value: newAccessToken },
+					{ name: COOKIES.refreshToken, value: newRefreshToken },
+				],
+			});
 			const newRequest: RequestInit = {
 				...originalRequest,
 				headers: {
@@ -75,10 +77,9 @@ export async function authResponseInterceptor(
 			};
 			return await fetch(res.url, newRequest);
 		} catch {
-			await deleteCookies([
-				{ name: COOKIES.accessToken },
-				{ name: COOKIES.refreshToken },
-			]);
+			await deleteCookies({
+				data: [{ name: COOKIES.accessToken }, { name: COOKIES.refreshToken }],
+			});
 		}
 	}
 

@@ -1,5 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { ColumnDef, RowData } from "@tanstack/table-core";
+import type {
+	ColumnDef,
+	ColumnFilter,
+	ColumnSort,
+	RowData,
+} from "@tanstack/table-core";
 import type { CookieSerializeOptions } from "cookie-es";
 import type { CookieAttributes } from "node_modules/@types/js-cookie";
 import type { ReactNode } from "react";
@@ -53,6 +58,14 @@ export type AppError<TError = unknown> = {
 	message: string;
 	error?: TError;
 };
+
+export type ExtendedColumnFilter = {
+	is_permanent?: boolean;
+} & ColumnFilter;
+
+export type ExtendedSorting = {
+	is_permanent?: boolean;
+} & ColumnSort;
 
 export type CookieType = {
 	name: string;

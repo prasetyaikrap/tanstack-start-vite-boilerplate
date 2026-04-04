@@ -1,6 +1,6 @@
 import { IconButton } from "@chakra-ui/react";
 import type { SortDirection } from "@tanstack/react-table";
-import { ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
 import type { ColumnButtonProps } from "./type";
 
 export function ColumnSorter({ column }: ColumnButtonProps) {
@@ -29,5 +29,5 @@ function ColumnSorterIcon({ sorted }: { sorted: false | SortDirection }) {
 		return <ChevronDown data-testid="btn_icon-sort-asc" size={18} />;
 	if (sorted === "desc")
 		return <ChevronUp data-testid="btn_icon-sort-desc" size={18} />;
-	return <ChevronsUpDown data-testid="btn_icon-sort-selector" size={18} />;
+	return <ArrowUpDown data-testid="btn_icon-sort-selector" size={18} />;
 }

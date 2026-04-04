@@ -98,23 +98,19 @@ type BaseFilterOptions = {
 		| "combobox-multi"
 		| "daypicker";
 	key?: string;
-	defaultValue?: string | number | BaseSelectOptions[] | null;
 	loading?: boolean;
 };
 
 export type TextFilterOptions = {
-	defaultValue?: string;
 	onValueChange?: (value: string) => void;
 } & BaseFilterOptions;
 
 export type NumberFilterOptions = {
-	defaultValue?: number;
 	onValueChange?: (value: NumberInputValueChangeDetails) => void;
 	stepper?: boolean;
 } & BaseFilterOptions;
 
 export type SelectFilterOptions = {
-	defaultValue?: BaseSelectOptions[];
 	options?: BaseSelectOptions[];
 	clearable?: boolean;
 	render?: (props: BaseSelectOptions) => ReactNode;
@@ -123,7 +119,6 @@ export type SelectFilterOptions = {
 } & BaseFilterOptions;
 
 export type SelectMultiFilterOptions = {
-	defaultValue?: BaseSelectOptions[];
 	options?: BaseSelectOptions[];
 	clearable?: boolean;
 	render?: (props: BaseSelectOptions) => ReactNode;
@@ -132,7 +127,6 @@ export type SelectMultiFilterOptions = {
 } & BaseFilterOptions;
 
 export type ComboboxFilterOptions = {
-	defaultValue?: BaseSelectOptions[];
 	options?: BaseSelectOptions[];
 	clearable?: boolean;
 	emptyMessage?: string;
@@ -143,7 +137,6 @@ export type ComboboxFilterOptions = {
 } & BaseFilterOptions;
 
 export type ComboboxMultiFilterOptions = {
-	defaultValue?: BaseSelectOptions[];
 	options?: BaseSelectOptions[];
 	clearable?: boolean;
 	emptyMessage?: string;
@@ -160,7 +153,6 @@ type ComboboxInputValueChangeProps = {
 };
 
 export type DaypickerFilterOptions = {
-	defaultValue?: string;
 	clearable?: boolean;
 	onValueChange?: (date: Date | undefined, dateString: string) => void;
 	dateFormat?: string;

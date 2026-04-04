@@ -1,7 +1,8 @@
 import {
-	type UseQueryOptions,
-	type UseQueryResult,
-	useQuery,
+	type InfiniteData,
+	type UseInfiniteQueryOptions,
+	type UseInfiniteQueryResult,
+	useInfiniteQuery,
 } from "@tanstack/react-query";
 import { useResourceContext } from "@/components/layouts/resource-provider";
 import type {
@@ -12,7 +13,7 @@ import type {
 } from "@/providers/data/type";
 import type { BaseRecord, CrudFilter, CrudSort, Pagination } from "@/types";
 
-export type UseListProps<
+export type UseInfiniteListProps<
 	TQueryFnData extends BaseRecord = BaseRecord,
 	TError extends QueryError = QueryError,
 	TQueryKey extends QueryKey = QueryKey,
@@ -24,13 +25,14 @@ export type UseListProps<
 	sorters?: CrudSort[];
 	meta?: GetListMetaQuery;
 	queryOptions?: Omit<
-		UseQueryOptions<
+		UseInfiniteQueryOptions<
 			QueryData<TQueryFnData>,
 			TError,
-			QueryData<TQueryFnData>,
-			TQueryKey
+			InfiniteData<QueryData<TQueryFnData>>,
+			TQueryKey,
+			PageParam
 		>,
-		"queryFn"
+		"queryFn" | "getNextPageParam" | "getPreviousPageParam" | "initialPageParam"
 	>;
 };
 
@@ -42,9 +44,9 @@ type BaseQueryKey = {
 	sorters?: CrudSort[];
 	meta?: GetListMetaQuery;
 };
-type QueryKey = ("useList" | BaseQueryKey | unknown)[];
+type QueryKey = ("useInfiniteList" | BaseQueryKey | unknown)[];
 type QueryData<TQueryFnData> = {
-	data: ResponsesBody<TQueryFnData>["data"];
+	data: TQueryFnData[];
 	metadata: ResponsesBody<TQueryFnData>["metadata"];
 };
 
@@ -55,14 +57,21 @@ type QueryError = {
 	error?: unknown;
 };
 
-export type UseListReturnType<
+type PageParam = {
+	page: number;
+};
+
+export type UseInfiniteListReturnType<
 	TQueryFnData extends BaseRecord = BaseRecord,
 	TError extends QueryError = QueryError,
 > = {
-	queryResult: UseQueryResult<QueryData<TQueryFnData>, TError>;
+	queryResult: UseInfiniteQueryResult<
+		InfiniteData<QueryData<TQueryFnData>>,
+		TError
+	>;
 };
 
-export function useList<
+export function useInfiniteList<
 	TQueryFnData extends BaseRecord = BaseRecord,
 	TError extends QueryError = QueryError,
 	TQueryKey extends QueryKey = QueryKey,
@@ -74,21 +83,24 @@ export function useList<
 	sorters,
 	meta,
 	queryOptions,
-}: UseListProps<TQueryFnData, TError, TQueryKey>): UseListReturnType<
+}: UseInfiniteListProps<
 	TQueryFnData,
-	TError
-> {
+	TError,
+	TQueryKey
+>): UseInfiniteListReturnType<TQueryFnData, TError> {
 	const { dataProvider } = useResourceContext();
 
-	const queryResult = useQuery<
+	const queryResult = useInfiniteQuery<
 		QueryData<TQueryFnData>,
 		TError,
-		QueryData<TQueryFnData>,
-		TQueryKey
+		InfiniteData<QueryData<TQueryFnData>>,
+		TQueryKey,
+		PageParam
 	>({
+		refetchOnWindowFocus: false,
 		...queryOptions,
 		queryKey: [
-			"useList",
+			"useInfiniteList",
 			{
 				resource,
 				pagination,
@@ -98,7 +110,7 @@ export function useList<
 			},
 			...(queryOptions?.queryKey ?? []),
 		] as TQueryKey,
-		queryFn: async ({ queryKey }) => {
+		queryFn: async ({ queryKey, pageParam }) => {
 			const { resource, pagination, filters, sorters, meta } =
 				queryKey[1] as BaseQueryKey;
 
@@ -107,7 +119,10 @@ export function useList<
 					dataProviderName as keyof DataProviders
 				].getList({
 					resource: resource as any,
-					pagination: pagination,
+					pagination: {
+						...pagination,
+						currentPage: pageParam.page || pagination?.currentPage || 1,
+					},
 					filters: filters,
 					sorters: sorters,
 					meta: meta,
@@ -117,6 +132,23 @@ export function useList<
 				return Promise.reject(error);
 			}
 		},
+		getNextPageParam: (lastPage) => {
+			const { metadata } = lastPage;
+			const nextPage = metadata.current_page + 1;
+			if (nextPage > metadata.total_page) {
+				return null;
+			}
+			return { page: nextPage };
+		},
+		getPreviousPageParam: (firstPage) => {
+			const { metadata } = firstPage;
+			const previousPage = metadata.current_page - 1;
+			if (previousPage < 1) {
+				return null;
+			}
+			return { page: previousPage };
+		},
+		initialPageParam: { page: pagination?.currentPage || 1 },
 		enabled: (queryOptions?.enabled ?? true) && Boolean(resource),
 	});
 

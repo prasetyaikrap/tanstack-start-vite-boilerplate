@@ -8,7 +8,9 @@ import {
 	VStack,
 } from "@chakra-ui/react";
 import type { ColumnFiltersState } from "@tanstack/react-table";
+import { isNull, isNumber, isUndefined } from "lodash";
 import { ListFilter } from "lucide-react";
+import { type FormEvent, useState } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 import { match } from "ts-pattern";
 import { FormCombobox } from "@/components/forms/form-combobox";
@@ -17,7 +19,11 @@ import { FormInput } from "@/components/forms/form-input";
 import { FormNumber } from "@/components/forms/form-number";
 import { FormSelect } from "@/components/forms/form-select";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { BaseRecord, BaseSelectOptions } from "@/types";
+import type {
+	BaseRecord,
+	BaseSelectOptions,
+	ExtendedColumnFilter,
+} from "@/types";
 import type {
 	ComboboxFilterOptions,
 	ComboboxMultiFilterOptions,
@@ -38,35 +44,68 @@ export default function Filters<TTableProps extends BaseRecord = BaseRecord>({
 	const { setColumnFilters } = reactTable;
 	const filters = filterOptions?.filtersDef || [];
 	const initialOpen = filterOptions?.initialOpen ?? true;
-	const defaultValues = filters.reduce((result, current) => {
-		const filterType = current.type || "text";
+	const generateDefaultValues = (refColumnFilterState: ColumnFiltersState) => {
+		const defaultFilters = filters.reduce((result, current) => {
+			const valueFromRef = refColumnFilterState.find(
+				(f) => f.id === current.id,
+			)?.value;
+			const filterType = current.type || "text";
+			// handle defaultValue as BaseSelectOptions array
+			if (
+				["select", "select-multi", "combobox", "combobox-multi"].includes(
+					filterType,
+				)
+			) {
+				if (
+					!isUndefined(valueFromRef) &&
+					!isNull(valueFromRef) &&
+					valueFromRef !== ""
+				) {
+					const values = String(valueFromRef)
+						.split(",")
+						.map((val) => {
+							return { label: val, value: val };
+						});
+					return {
+						...result,
+						[current.id]: values,
+					};
+				}
+				return {
+					...result,
+					[current.id]: [],
+				};
+			}
 
-		// handle defaultValue as BaseSelectOptions array
-		if (
-			["select", "select-multi", "combobox", "combobox-multi"].includes(
-				filterType,
-			)
-		) {
+			// handle defaultValue as a number
+			if (["number"].includes(filterType)) {
+				if (isNumber(valueFromRef)) {
+					return {
+						...result,
+						[current.id]: valueFromRef,
+					};
+				}
+				return {
+					...result,
+					[current.id]: 0,
+				};
+			}
+
+			// handler defaultValue as string (e.g text, daypicker)
 			return {
 				...result,
-				[current.id]: (current.defaultValue as BaseSelectOptions[]) || [],
+				[current.id]: valueFromRef ?? "",
 			};
-		}
+		}, {});
 
-		// handle defaultValue as a number
-		if (["number"].includes(filterType)) {
-			return {
-				...result,
-				[current.id]: (current.defaultValue as number) || 0,
-			};
-		}
+		return defaultFilters;
+	};
 
-		// handler defaultValue as string (e.g text, daypicker)
-		return {
-			...result,
-			[current.id]: current.defaultValue || "",
-		};
-	}, {});
+	const [defaultValues] = useState<Record<string, any>>(() => {
+		const filterState = reactTable.getState().columnFilters;
+		const defaultFilters = generateDefaultValues(filterState);
+		return defaultFilters;
+	});
 
 	const filterFormProps = useForm({
 		defaultValues,
@@ -74,13 +113,20 @@ export default function Filters<TTableProps extends BaseRecord = BaseRecord>({
 
 	const { reset } = filterFormProps;
 
-	const onReset = () => {
+	const onReset = (e: FormEvent) => {
+		e.preventDefault();
 		setColumnFilters([]);
-		return reset(defaultValues);
+		reset();
 	};
 
 	const onSubmit = (data: Record<string, any>) => {
-		const filterState: ColumnFiltersState = Object.entries(data).reduce(
+		const permanentField = reactTable
+			.getState()
+			.columnFilters.filter(
+				(filter: ExtendedColumnFilter) => filter.is_permanent,
+			)
+			.map((f) => f.id);
+		const filterState: ExtendedColumnFilter[] = Object.entries(data).reduce(
 			(res, curr) => {
 				const [key, value] = curr;
 				const isArray = Array.isArray(value);
@@ -95,6 +141,7 @@ export default function Filters<TTableProps extends BaseRecord = BaseRecord>({
 							value: (value as BaseSelectOptions[])
 								.map((v) => v.value)
 								.join(","),
+							is_permanent: permanentField.includes(key),
 						},
 					];
 					return res;
@@ -105,11 +152,12 @@ export default function Filters<TTableProps extends BaseRecord = BaseRecord>({
 					{
 						id: key,
 						value: value,
+						is_permanent: permanentField.includes(key),
 					},
 				];
 				return res;
 			},
-			[] as ColumnFiltersState,
+			[] as ExtendedColumnFilter[],
 		);
 
 		setColumnFilters(filterState);

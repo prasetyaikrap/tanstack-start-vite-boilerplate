@@ -18,16 +18,9 @@ import {
 	authRequestInterceptor,
 	authResponseInterceptor,
 } from "./interceptors";
-import type { DataProvider } from "./type";
+import type { BaseResourceKeys, DataProvider } from "./type";
 
-type ResourceKeys =
-	| "auth-login"
-	| "auth-logout"
-	| "auth-register"
-	| "auth-verify"
-	| "auth-exchange"
-	| "auth-renew"
-	| "test-posts";
+type ResourceKeys = BaseResourceKeys | keyof typeof authRouter;
 
 export function authProvider(): DataProvider<ResourceKeys> {
 	const client = new RestClient({
@@ -71,7 +64,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 		},
 		getOne: async ({ resource }) => {
 			return match({ resource })
-				.with({ resource: "auth-verify" }, () =>
+				.with({ resource: "authVerify" }, () =>
 					service
 						.authVerify<AuthVerifyResponse>()
 						.then(responseOk)
@@ -94,7 +87,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 		},
 		create: async ({ resource, variables }) => {
 			return match({ resource })
-				.with({ resource: "auth-register" }, () =>
+				.with({ resource: "authRegister" }, () =>
 					service
 						.authRegister<AuthRegisterResponse>({
 							payload: variables as AuthRegisterPayload,
@@ -102,7 +95,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.then(responseOk)
 						.catch(responseError),
 				)
-				.with({ resource: "auth-login" }, () =>
+				.with({ resource: "authLogin" }, () =>
 					service
 						.authLogin<AuthLoginResponse>({
 							payload: variables as AuthLoginPayload,
@@ -110,7 +103,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.then(responseOk)
 						.catch(responseError),
 				)
-				.with({ resource: "auth-exchange" }, () =>
+				.with({ resource: "authExchange" }, () =>
 					service
 						.authExchange<AuthExchangeResponse>({
 							payload: variables as AuthExchangePayload,
@@ -135,7 +128,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 		},
 		update: async ({ resource }) => {
 			return match({ resource })
-				.with({ resource: "auth-renew" }, () =>
+				.with({ resource: "authRenew" }, () =>
 					service
 						.authRenew<AuthRenewResponse>()
 						.then(responseOk)
@@ -158,7 +151,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 		},
 		delete: async ({ resource }) => {
 			return match({ resource })
-				.with({ resource: "auth-logout" }, () =>
+				.with({ resource: "authLogout" }, () =>
 					service
 						.authLogout<AuthLogoutResponse>()
 						.then(responseOk)

@@ -3,10 +3,12 @@ import {
 	type UseMutationResult,
 	useMutation,
 } from "@tanstack/react-query";
-import { createServerFn, useServerFn } from "@tanstack/react-start";
-import z from "zod";
-import { dataProviders } from "@/providers/data";
-import type { CreateMetaQuery, DataProvider } from "@/providers/data/type";
+import { useResourceContext } from "@/components/layouts/resource-provider";
+import type {
+	CreateMetaQuery,
+	DataProvider,
+	DataProviders,
+} from "@/providers/data/type";
 
 export type UseCreateProps<
 	TData = unknown,
@@ -29,7 +31,6 @@ export type UseCreateReturnType<
 	TOnMutateResult = unknown,
 > = UseMutationResult<TData, TError, TVariables, TOnMutateResult>;
 
-type DataProviders = typeof dataProviders;
 type ExtractResourceKeys<T> = T extends DataProvider<infer R> ? R : never;
 type MutationError = {
 	success: boolean;
@@ -54,20 +55,20 @@ export function useCreate<
 	TVariables,
 	TOnMutateResult
 >): UseCreateReturnType<TData, TError, TVariables, TOnMutateResult> {
-	const createOneHook = useServerFn(createOneServerFn);
+	const { dataProvider } = useResourceContext();
+
 	const mutation = useMutation({
 		...mutationOptions,
 		mutationFn: async (variables) => {
 			try {
-				const { data } = await createOneHook({
-					data: {
-						dataProviderName,
-						resource,
-						variables: variables as Record<string, unknown>,
-						meta,
-					},
+				const { data: createOneData } = await dataProvider[
+					dataProviderName
+				].create({
+					resource: resource as any,
+					variables: variables as Record<string, unknown>,
+					meta,
 				});
-				return { data } as TData;
+				return { data: createOneData } as TData;
 			} catch (error) {
 				return Promise.reject(error);
 			}
@@ -76,25 +77,3 @@ export function useCreate<
 
 	return mutation;
 }
-
-const createOneServerFn = createServerFn()
-	.inputValidator(
-		z.custom<{
-			dataProviderName: keyof DataProviders;
-			resource: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
-			variables: Record<string, unknown>;
-			meta?: CreateMetaQuery;
-		}>(),
-	)
-	.handler(async (data) => {
-		const { dataProviderName, resource, variables, meta } = data.data;
-		const { data: createOneData } = await dataProviders[
-			dataProviderName
-		].create({
-			resource,
-			variables,
-			meta,
-		});
-
-		return { data: createOneData as any };
-	});

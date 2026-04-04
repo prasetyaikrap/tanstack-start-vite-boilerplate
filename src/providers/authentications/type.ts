@@ -28,7 +28,7 @@ export type AuthActionResponse = {
 
 export type AuthError = AppError;
 
-export type AuthProvider = {
+export type AuthProviderReturnType = {
 	login: (params: any) => Promise<AuthActionResponse>;
 	logout: (params: any) => Promise<AuthActionResponse>;
 	check: (params?: any) => Promise<CheckResponse>;

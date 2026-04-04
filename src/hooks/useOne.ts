@@ -3,11 +3,10 @@ import {
 	type UseQueryResult,
 	useQuery,
 } from "@tanstack/react-query";
-import { createServerFn, useServerFn } from "@tanstack/react-start";
-import z from "zod";
-import { dataProviders } from "@/providers/data";
+import { useResourceContext } from "@/components/layouts/resource-provider";
 import type {
 	DataProvider,
+	DataProviders,
 	GetOneMetaQuery,
 	ResponseBody,
 } from "@/providers/data/type";
@@ -33,10 +32,9 @@ export type UseListProps<
 	>;
 };
 
-type DataProviders = typeof dataProviders;
 type ExtractResourceKeys<T> = T extends DataProvider<infer R> ? R : never;
 type BaseQueryKey = {
-	resource?: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
+	resource: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
 	id?: BaseKey;
 	meta?: GetOneMetaQuery;
 };
@@ -52,11 +50,11 @@ type QueryError = {
 	error?: unknown;
 };
 
-export type UseListReturnType<
+export type UseOneReturnType<
 	TQueryFnData extends BaseRecord = BaseRecord,
 	TError extends QueryError = QueryError,
 > = {
-	tableQuery: UseQueryResult<QueryData<TQueryFnData>, TError>;
+	queryResult: UseQueryResult<QueryData<TQueryFnData>, TError>;
 };
 
 export function useOne<
@@ -69,11 +67,12 @@ export function useOne<
 	id = "",
 	meta,
 	queryOptions,
-}: UseListProps<TQueryFnData, TError, TQueryKey>): UseListReturnType<
+}: UseListProps<TQueryFnData, TError, TQueryKey>): UseOneReturnType<
 	TQueryFnData,
 	TError
 > {
-	const getOneHook = useServerFn(getOneServerFn);
+	const { dataProvider } = useResourceContext();
+
 	const queryResult = useQuery<
 		QueryData<TQueryFnData>,
 		TError,
@@ -88,19 +87,19 @@ export function useOne<
 				id,
 				meta,
 			},
+			...(queryOptions?.queryKey ?? []),
 		] as TQueryKey,
 		queryFn: async ({ queryKey }) => {
 			const { resource, id } = queryKey[1] as BaseQueryKey;
 			try {
-				const { data } = await getOneHook({
-					data: {
-						dataProviderName,
-						resource,
-						id,
-						meta,
-					},
+				const { data: oneData } = await dataProvider[
+					dataProviderName as keyof DataProviders
+				].getOne({
+					resource: resource as any,
+					id: id as Exclude<typeof id, undefined>,
+					meta,
 				});
-				return { data: data as TQueryFnData };
+				return { data: oneData as TQueryFnData };
 			} catch (error) {
 				return Promise.reject(error);
 			}
@@ -109,23 +108,6 @@ export function useOne<
 	});
 
 	return {
-		tableQuery: queryResult,
+		queryResult,
 	};
 }
-
-const getOneServerFn = createServerFn()
-	.inputValidator(
-		z.custom<{ dataProviderName: keyof DataProviders } & BaseQueryKey>(),
-	)
-	.handler(async (data) => {
-		const { dataProviderName, resource, id, meta } = data.data;
-		const { data: oneData } = await dataProviders[
-			dataProviderName as keyof DataProviders
-		].getOne({
-			resource: resource as Exclude<typeof resource, undefined>,
-			id: id as Exclude<typeof id, undefined>,
-			meta,
-		});
-
-		return { data: oneData as any };
-	});

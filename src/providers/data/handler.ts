@@ -13,7 +13,7 @@ import type { GetListMetaQuery, ResponseBody, ResponsesBody } from "./type";
 export function responseOk<T extends BaseRecord>(res: RestResponse) {
 	const responseBody = res.body as unknown as ResponseBody<T>;
 	if (res.status < 200 || res.status >= 300) {
-		throw new HTTPError(responseBody?.message, res.status, responseBody.error);
+		throw new HTTPError(responseBody?.message, res.status, responseBody);
 	}
 
 	return responseBody;
@@ -22,11 +22,7 @@ export function responseOk<T extends BaseRecord>(res: RestResponse) {
 export function responsesOk<T extends BaseRecord>(res: RestResponse) {
 	const responsesBody = res.body as unknown as ResponsesBody<T>;
 	if (res.status < 200 || res.status >= 300) {
-		throw new HTTPError(
-			responsesBody?.message,
-			res.status,
-			responsesBody.error,
-		);
+		throw new HTTPError(responsesBody?.message, res.status, responsesBody);
 	}
 
 	return responsesBody;
@@ -93,6 +89,7 @@ export function generateParams(
 		transformFilters?: GetListMetaQuery["transformFilters"];
 		transformSorters?: GetListMetaQuery["transformSorters"];
 		paginationMode?: GetListMetaQuery["paginationMode"];
+		useQueryField?: boolean;
 	},
 ) {
 	const paramsPagination = match(opts?.paginationMode)
@@ -141,7 +138,7 @@ export function generateParams(
 			};
 			const isSkipUpsert =
 				value === undefined ||
-				["_cursor", "_page", "_direction"].includes(field);
+				["_cursor", "_page", "_direction", "_limit"].includes(field);
 
 			if (isSkipUpsert) return params;
 
@@ -150,11 +147,15 @@ export function generateParams(
 		{},
 	);
 
-	const queries =
-		Object.keys(paramsFilter).length > 0
-			? JSON.stringify(paramsFilter)
-			: undefined;
-	const paramQueries = queries ? { queries } : {};
+	const paramQueries = match(opts?.useQueryField)
+		.with(true, () => {
+			const queries =
+				Object.keys(paramsFilter).length > 0
+					? JSON.stringify(paramsFilter)
+					: undefined;
+			return queries ? { queries } : {};
+		})
+		.otherwise(() => ({ ...paramsFilter }));
 
 	const transformedSorters = opts?.transformSorters?.(sorters) || sorters;
 	const sorterString = transformedSorters
@@ -169,3 +170,14 @@ export function generateParams(
 
 	return { ...paramsPagination, ...paramsSorter, ...paramQueries };
 }
+
+export const resourceNotFoundError = {
+	status: 404,
+	body: {
+		success: false,
+		message: "Resource not found",
+		data: null,
+		error: "Resource not found",
+	},
+	headers: new Headers(),
+};

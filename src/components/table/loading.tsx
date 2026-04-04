@@ -10,7 +10,7 @@ export function LoadingState() {
       w="full"
       h="full"
     >
-      <Spinner />
+      <Spinner size="lg" />
     </Center>
   );
 }

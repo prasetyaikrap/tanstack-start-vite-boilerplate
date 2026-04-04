@@ -1,3 +1,5 @@
+import { createServerFn } from "@tanstack/react-start";
+import z from "zod";
 import { COOKIES } from "@/configs/cookies";
 import { ENVS } from "@/configs/envs";
 import { authRouter } from "@/providers/data/api/auth-schema";
@@ -6,11 +8,14 @@ import type {
 	AuthLogoutResponse,
 	AuthVerifyResponse,
 } from "@/providers/data/api/type";
-import { defaultFetcher } from "@/providers/fetcher";
-import initRestClient from "@/providers/rest-client";
-import type { RestResponse } from "@/providers/rest-client/type";
-import { deleteCookies, getCookies, setCookies } from "@/utils/general";
-import type { AuthActionResponse, AuthProvider, CheckResponse } from "./type";
+import RestClient from "@/providers/rest-client";
+import { deleteCookies, getCookies, setCookies } from "@/utils/server-actions";
+import { authRequestInterceptor } from "../data/interceptors";
+import type {
+	AuthActionResponse,
+	AuthProviderReturnType,
+	CheckResponse,
+} from "./type";
 
 type BaseParams = {
 	resource?: string;
@@ -18,28 +23,39 @@ type BaseParams = {
 
 type LoginParams = {
 	code: string;
-	grant_type: string;
+	grantType: string;
 	redirectTo?: string;
 } & BaseParams;
 
 type CheckParams = {} & BaseParams;
 
-const authService = initRestClient({
-	baseUrl: ENVS.APP_AUTH_SERVICE_HOST,
-	routers: authRouter,
-	httpClient: defaultFetcher,
-});
+export class AuthProvider implements AuthProviderReturnType {
+	public authService: ReturnType<RestClient<typeof authRouter>["init"]>;
+	public loginServerFn: ReturnType<typeof this._loginServerfn>;
+	public checkServerFn: ReturnType<typeof this._checkServerfn>;
+	public logoutServerFn: ReturnType<typeof this._logoutServerfn>;
+	constructor() {
+		const client = new RestClient({
+			baseUrl: ENVS.APP_AUTH_SERVICE_HOST,
+			routers: authRouter,
+		});
 
-export const authProvider: AuthProvider = {
-	login: async ({
-		grant_type,
+		client.addRequestInterceptor(authRequestInterceptor);
+		this.authService = client.init();
+		this.loginServerFn = this._loginServerfn();
+		this.checkServerFn = this._checkServerfn();
+		this.logoutServerFn = this._logoutServerfn();
+	}
+
+	async login({
+		grantType,
 		code,
-		redirectTo = "/dashboard",
-	}: LoginParams): Promise<AuthActionResponse> => {
+		redirectTo,
+	}: LoginParams): Promise<AuthActionResponse> {
 		try {
 			const { status, body } =
-				await authService.authExchange<AuthExchangeResponse>({
-					payload: { grant_type, code },
+				await this.authService.authExchange<AuthExchangeResponse>({
+					payload: { grant_type: grantType, code },
 				});
 
 			if (status !== 200) {
@@ -54,10 +70,12 @@ export const authProvider: AuthProvider = {
 			}
 
 			const { access_token, refresh_token } = body.data;
-			await setCookies([
-				{ name: COOKIES.accessToken, value: access_token },
-				{ name: COOKIES.refreshToken, value: refresh_token },
-			]);
+			await setCookies({
+				data: [
+					{ name: COOKIES.accessToken, value: access_token },
+					{ name: COOKIES.refreshToken, value: refresh_token },
+				],
+			});
 
 			return {
 				success: true,
@@ -69,15 +87,37 @@ export const authProvider: AuthProvider = {
 				redirectTo: "/login",
 				error: {
 					type: "provider_auth_login",
-					message:
-						(error as RestResponse<{ message: string }>)?.body?.message ||
-						"Something Went Wrong",
-					error: error,
+					message: (error as Error)?.message || "Something Went Wrong",
 				},
 			};
 		}
-	},
-	check: async (params: CheckParams): Promise<CheckResponse> => {
+	}
+
+	private _loginServerfn() {
+		return createServerFn()
+			.inputValidator(
+				z.object({
+					code: z.string(),
+					grantType: z.string(),
+					redirectTo: z.string().optional(),
+				}),
+			)
+			.handler(async ({ data }) => {
+				const result = await this.login(data);
+				return {
+					...result,
+					error: result.error
+						? {
+								type: result.error.type,
+								message: result.error.message,
+								error: result.error.error ?? undefined,
+							}
+						: undefined,
+				};
+			});
+	}
+
+	async check(params: CheckParams): Promise<CheckResponse> {
 		const protectedResources = ["protected"];
 		if (!protectedResources.includes(params?.resource || "")) {
 			return Promise.resolve({
@@ -87,8 +127,7 @@ export const authProvider: AuthProvider = {
 
 		try {
 			const { status, body } =
-				await authService.authVerify<AuthVerifyResponse>();
-
+				await this.authService.authVerify<AuthVerifyResponse>();
 			if (status !== 200) {
 				return {
 					authenticated: false,
@@ -102,10 +141,12 @@ export const authProvider: AuthProvider = {
 			}
 
 			const { access_token, refresh_token } = body.data;
-			await setCookies([
-				{ name: COOKIES.accessToken, value: access_token },
-				{ name: COOKIES.refreshToken, value: refresh_token },
-			]);
+			await setCookies({
+				data: [
+					{ name: COOKIES.accessToken, value: access_token },
+					{ name: COOKIES.refreshToken, value: refresh_token },
+				],
+			});
 
 			return {
 				authenticated: true,
@@ -117,25 +158,45 @@ export const authProvider: AuthProvider = {
 				logout: true,
 				error: {
 					type: "provider_auth_check",
-					message:
-						(error as RestResponse<{ message: string }>)?.body?.message ||
-						"Authentication Failed",
-					error: error,
+					message: (error as Error)?.message || "Authentication Failed",
 				},
 			};
 		}
-	},
-	logout: async (): Promise<AuthActionResponse> => {
+	}
+
+	private _checkServerfn() {
+		return createServerFn()
+			.inputValidator(
+				z.object({
+					resource: z.string().optional(),
+				}),
+			)
+			.handler(async ({ data }) => {
+				const result = await this.check(data);
+				return {
+					...result,
+					error: result.error
+						? {
+								type: result.error.type,
+								message: result.error.message,
+								error: result.error.error ?? undefined,
+							}
+						: undefined,
+				};
+			});
+	}
+
+	async logout(): Promise<AuthActionResponse> {
 		try {
-			const [refreshTokenCookie] = await getCookies([COOKIES.refreshToken]);
-			const { status, body } = await authService.authLogout<AuthLogoutResponse>(
-				{
+			const [refreshTokenCookie] = await getCookies({
+				data: [COOKIES.refreshToken],
+			});
+			const { status, body } =
+				await this.authService.authLogout<AuthLogoutResponse>({
 					headers: {
 						Authorization: `Bearer ${refreshTokenCookie?.value ?? ""}`,
 					},
-				},
-			);
-
+				});
 			if (status !== 200) {
 				return {
 					success: false,
@@ -146,7 +207,9 @@ export const authProvider: AuthProvider = {
 				};
 			}
 
-			await deleteCookies([COOKIES.accessToken, COOKIES.refreshToken]);
+			await deleteCookies({
+				data: [{ name: COOKIES.accessToken }, { name: COOKIES.refreshToken }],
+			});
 
 			return {
 				success: true,
@@ -157,18 +220,25 @@ export const authProvider: AuthProvider = {
 				success: false,
 				error: {
 					type: "provider_auth_logout",
-					message:
-						(error as RestResponse<{ message: string }>)?.body?.message ||
-						"Logout Failed",
-					error: error,
+					message: (error as Error)?.message || "Logout Failed",
 				},
 			};
 		}
-	},
-	//   getIdentity: async (params: any): Promise<IdentityResponse> => {},
-	// optional methods
-	//   register: async (params: any): Promise<AuthActionResponse> => {},
-	//   forgotPassword: async (params: any): Promise<AuthActionResponse> => {},
-	//   updatePassword: async (params: any): Promise<AuthActionResponse> => {},
-	//   getPermissions: async (params: any): Promise<unknown> => {},
-};
+	}
+
+	private _logoutServerfn() {
+		return createServerFn().handler(async () => {
+			const result = await this.logout();
+			return {
+				...result,
+				error: result.error
+					? {
+							type: result.error.type,
+							message: result.error.message,
+							error: result.error.error ?? undefined,
+						}
+					: undefined,
+			};
+		});
+	}
+}

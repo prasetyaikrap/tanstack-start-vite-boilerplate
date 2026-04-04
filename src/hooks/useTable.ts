@@ -1,5 +1,5 @@
-import { type UseQueryResult, useQuery } from "@tanstack/react-query";
-import { createServerFn, useServerFn } from "@tanstack/react-start";
+import type { UseQueryResult } from "@tanstack/react-query";
+import { useSearch } from "@tanstack/react-router";
 import {
 	getCoreRowModel,
 	getFilteredRowModel,
@@ -8,26 +8,33 @@ import {
 	type TableOptions,
 	useReactTable,
 } from "@tanstack/react-table";
-import { isEqual } from "lodash";
-import { useEffect, useRef, useState } from "react";
-import z from "zod";
-import { dataProviders } from "@/providers/data";
-import type { BaseRecord, CrudFilter, CrudSort, Pagination } from "@/types";
+import { isEqual, isNull, isUndefined } from "lodash";
+import { useEffect, useState } from "react";
 import type {
 	DataProvider,
+	DataProviders,
 	GetListMetaQuery,
 	ResponsesBody,
-} from "../providers/data/type";
+} from "@/providers/data/type";
+import type {
+	BaseRecord,
+	CrudFilter,
+	CrudSort,
+	ExtendedColumnFilter,
+	ExtendedSorting,
+	Pagination,
+} from "@/types";
+import { useIsFirstRender } from "./useFirstRender";
+import { useList } from "./useList";
 
 export type UseTableProps<TQueryFnData extends BaseRecord = BaseRecord> = {
-	providers?: ProviderProps;
+	providers: ProviderProps;
 } & Pick<TableOptions<TQueryFnData>, "columns"> &
 	Partial<Omit<TableOptions<TQueryFnData>, "columns">>;
 
-type DataProviders = typeof dataProviders;
 type ExtractResourceKeys<T> = T extends DataProvider<infer R> ? R : never;
 type BaseQueryKey = {
-	resource?: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
+	resource: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
 	pagination?: Pagination;
 	filters?: CrudFilter[];
 	sorters?: CrudSort[];
@@ -51,17 +58,18 @@ type ProviderProps = {
 	resource?: ExtractResourceKeys<DataProviders[keyof DataProviders]>;
 	pagination?: Pagination;
 	filters?: {
-		initial?: CrudFilter[];
-		permanent?: CrudFilter[];
+		initial?: Omit<CrudFilter, "is_permanent">[];
+		permanent?: Omit<CrudFilter, "is_permanent">[];
 	};
 	sorters?: {
-		initial?: CrudSort[];
-		permanent?: CrudSort[];
+		initial?: Omit<CrudSort, "is_permanent">[];
+		permanent?: Omit<CrudSort, "is_permanent">[];
 	};
 	syncWithLocation?: boolean;
 	meta?: GetListMetaQuery;
 	queryOptions?: {
 		enabled?: boolean;
+		queryKey?: unknown[];
 	};
 };
 
@@ -95,63 +103,149 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 	providers,
 	...reactTableOptions
 }: UseTableProps<TQueryFnData>): UseTableReturnType<TQueryFnData> {
+	const searchParams = useSearch({ strict: false }) as Record<
+		string,
+		string | string[] | undefined
+	>;
 	const isFirstRender = useIsFirstRender();
-	const [pagination, setPagination] = useState<Pagination>({
-		pageSize: providers?.pagination?.pageSize ?? 10,
-		currentPage: providers?.pagination?.currentPage ?? 1,
+	const [pagination, setPagination] = useState<Pagination>(() => {
+		const pagination = {
+			pageSize: providers?.pagination?.pageSize ?? 10,
+			currentPage: providers?.pagination?.currentPage ?? 1,
+		};
+		if (providers?.syncWithLocation) {
+			if (searchParams._page) {
+				const page = Number(searchParams._page);
+				if (!Number.isNaN(page)) {
+					pagination.currentPage = page;
+				}
+			}
+			if (searchParams._limit) {
+				const limit = Number(searchParams._limit);
+				if (!Number.isNaN(limit)) {
+					pagination.pageSize = limit;
+				}
+			}
+		}
+		return pagination;
 	});
-	const [filters, setFilters] = useState<CrudFilter[]>([
-		...(providers?.filters?.initial ?? []),
-		...(providers?.filters?.permanent ?? []),
-	]);
-	const [sorters, setSorters] = useState<CrudSort[]>([
-		...(providers?.sorters?.initial ?? []),
-		...(providers?.sorters?.permanent ?? []),
-	]);
+	const [filters, setFilters] = useState<CrudFilter[]>(() => {
+		const initialFilters = providers?.filters?.initial ?? [];
+		const permanentFilters = providers?.filters?.permanent ?? [];
+		const filters: CrudFilter[] = [...initialFilters];
+
+		if (providers?.syncWithLocation) {
+			Object.entries(searchParams).forEach(([key, value]) => {
+				if (["_page", "_limit", "_sort"].includes(key)) return;
+				if (isUndefined(value) || isNull(value)) return;
+				let parsedValue: string | string[] | number | boolean = value;
+				if (value === "true") {
+					parsedValue = true;
+				} else if (value === "false") {
+					parsedValue = false;
+				} else if (!Number.isNaN(Number(value))) {
+					parsedValue = Number(value);
+				}
+
+				const currentFilterIndex = filters.findIndex(
+					(filter) => filter.field === key,
+				);
+				if (currentFilterIndex > -1) {
+					filters[currentFilterIndex].value =
+						`${filters[currentFilterIndex].value},${parsedValue}`;
+				} else {
+					filters.push({
+						field: key,
+						value: parsedValue,
+					});
+				}
+			});
+		}
+
+		permanentFilters.forEach((permanentFilter) => {
+			const currentFilterIndex = filters.findIndex(
+				(filter) => filter.field === permanentFilter.field,
+			);
+			if (currentFilterIndex > -1) {
+				filters[currentFilterIndex].value = permanentFilter.value;
+				filters[currentFilterIndex].is_permanent = true;
+			} else {
+				filters.push({ ...permanentFilter, is_permanent: true });
+			}
+		});
+
+		return filters;
+	});
+	const [sorters, setSorters] = useState<CrudSort[]>(() => {
+		const initialSorters = providers?.sorters?.initial ?? [];
+		const permanentSorters = providers?.sorters?.permanent ?? [];
+		const sorters: CrudSort[] = [...initialSorters];
+
+		if (providers?.syncWithLocation) {
+			if (searchParams._sort) {
+				const sortParam = Array.isArray(searchParams._sort)
+					? searchParams._sort
+					: [searchParams._sort];
+				sortParam.forEach((param) => {
+					const paramName = param.replace(/^-/, ""); // remove starting "-"
+					const isDesc = param.startsWith("-");
+					const currentSorterIndex = sorters.findIndex(
+						(sorter) => sorter.field === paramName,
+					);
+					if (currentSorterIndex > -1) {
+						sorters[currentSorterIndex].order = isDesc ? "desc" : "asc";
+						sorters[currentSorterIndex].is_permanent = true;
+					} else {
+						sorters.push({
+							field: paramName,
+							order: isDesc ? "desc" : "asc",
+							is_permanent: true,
+						});
+					}
+				});
+			}
+		}
+
+		permanentSorters.forEach((permanentSorter) => {
+			const currentSorterIndex = sorters.findIndex(
+				(sorter) => sorter.field === permanentSorter.field,
+			);
+			if (currentSorterIndex > -1) {
+				sorters[currentSorterIndex].order = permanentSorter.order;
+			} else {
+				sorters.push(permanentSorter);
+			}
+		});
+
+		return sorters;
+	});
 
 	const isQueryEnabled = providers?.queryOptions?.enabled ?? true;
 	const dataProviderName = providers?.dataProviderName || "default";
 	const resource = providers?.resource;
 	const isServerSide = Boolean(providers);
 
-	const getListTableHook = useServerFn(getListTableServerFn);
-
-	const queryResult = useQuery<
-		QueryData<TQueryFnData>,
-		QueryError,
-		QueryData<TQueryFnData>,
-		QueryKey
-	>({
-		queryKey: [
-			"table-data",
-			{
-				resource,
-				pagination,
-				filters,
-				sorters,
-				meta: providers?.meta,
-			},
-		],
-		queryFn: async ({ queryKey }) => {
-			const { resource, pagination, filters, sorters, meta } =
-				queryKey[1] as BaseQueryKey;
-			try {
-				const { data, metadata } = await getListTableHook({
-					data: {
-						dataProviderName,
-						resource,
-						pagination,
-						filters,
-						sorters,
-						meta,
-					},
-				});
-				return { data: data as TQueryFnData[], metadata };
-			} catch (error) {
-				return Promise.reject(error);
-			}
+	const { queryResult } = useList<TQueryFnData, QueryError, QueryKey>({
+		dataProviderName,
+		resource: resource as any,
+		pagination,
+		filters,
+		sorters,
+		meta: providers?.meta,
+		queryOptions: {
+			enabled: isServerSide && isQueryEnabled && Boolean(resource),
+			queryKey: [
+				"table-data",
+				{
+					resource,
+					pagination,
+					filters,
+					sorters,
+					meta: providers?.meta,
+				},
+				...(providers?.queryOptions?.queryKey ?? []),
+			],
 		},
-		enabled: isServerSide && isQueryEnabled && Boolean(resource),
 	});
 
 	const reactTableProps = useReactTable<TQueryFnData>({
@@ -167,14 +261,16 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 			columnFilters: filters.map((filter) => ({
 				id: filter.field,
 				value: filter.value,
+				is_permanent: Boolean(filter.is_permanent),
 			})),
 			sorting: sorters.map((sorter) => ({
 				id: sorter.field,
 				desc: sorter.order === "desc",
+				is_permanent: Boolean(sorter.is_permanent),
 			})),
 			...reactTableOptions.initialState,
 		},
-		pageCount: queryResult.data?.metadata.total_page,
+		pageCount: queryResult.data?.metadata.total_page || -1,
 		manualPagination: true,
 		manualFiltering: isServerSide,
 		manualSorting: isServerSide,
@@ -210,14 +306,22 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 
 	useEffect(() => {
 		if (!reactTableSorting) return;
-		const newSorters: CrudSort[] = reactTableSorting.map((sorting) => ({
-			field: sorting.id,
-			order: sorting.desc ? "desc" : "asc",
-		}));
+		const newSorters: CrudSort[] = reactTableSorting.map(
+			(sorting: ExtendedSorting) => ({
+				field: sorting.id,
+				order: sorting.desc ? "desc" : "asc",
+				is_permanent: Boolean(sorting.is_permanent),
+			}),
+		);
 
 		providers?.sorters?.permanent?.forEach((permanentSorter) => {
-			if (!newSorters.find((s) => s.field === permanentSorter.field)) {
-				newSorters.push(permanentSorter);
+			const foundIndex = newSorters.findIndex(
+				(s) => s.field === permanentSorter.field,
+			);
+			if (foundIndex > -1) {
+				newSorters[foundIndex].is_permanent = true;
+			} else {
+				newSorters.push({ ...permanentSorter, is_permanent: true });
 			}
 		});
 
@@ -236,14 +340,22 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 	useEffect(() => {
 		if (!columnFilters) return;
 
-		const newFilters: CrudFilter[] = columnFilters.map((columnFilter) => ({
-			field: columnFilter.id,
-			value: columnFilter.value,
-		}));
+		const newFilters: CrudFilter[] = columnFilters.map(
+			(columnFilter: ExtendedColumnFilter) => ({
+				field: columnFilter.id,
+				value: columnFilter.value,
+				is_permanent: Boolean(columnFilter.is_permanent),
+			}),
+		);
 
 		providers?.filters?.permanent?.forEach((permanentFilter) => {
-			if (!newFilters.find((f) => f.field === permanentFilter.field)) {
-				newFilters.push(permanentFilter);
+			const foundIndex = newFilters.findIndex(
+				(f) => f.field === permanentFilter.field,
+			);
+			if (foundIndex > -1) {
+				newFilters[foundIndex].is_permanent = true;
+			} else {
+				newFilters.push({ ...permanentFilter, is_permanent: true });
 			}
 		});
 
@@ -258,6 +370,44 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 			}));
 		}
 	}, [columnFilters, columns]);
+
+	useEffect(() => {
+		if (!providers?.syncWithLocation) return;
+		const params = new URLSearchParams();
+		params.append("_page", String(pagination.currentPage));
+		params.append("_limit", String(pagination.pageSize));
+		sorters.forEach((sorter) => {
+			params.append(
+				"_sort",
+				`${sorter.order === "desc" ? "-" : ""}${sorter.field}`,
+			);
+		});
+
+		filters.forEach((filter) => {
+			const paramValue = filter.value;
+			if (typeof paramValue === "boolean" || typeof paramValue === "number") {
+				params.append(`${filter.field}`, String(paramValue));
+				return;
+			}
+
+			if (typeof paramValue === "string") {
+				const paramValues = paramValue.split(",");
+				paramValues.forEach((value) => {
+					params.append(`${filter.field}`, value);
+				});
+				return;
+			}
+
+			if (Array.isArray(paramValue)) {
+				paramValue.forEach((value) => {
+					params.append(`${filter.field}`, String(value));
+				});
+				return;
+			}
+		});
+
+		window.history.replaceState(null, "", `?${params.toString()}`);
+	}, [providers?.syncWithLocation, pagination, filters, sorters]);
 
 	const setCurrentPage = (page: number) => {
 		setPagination((prev) => ({
@@ -293,33 +443,3 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 		},
 	};
 }
-
-const useIsFirstRender = () => {
-	const firstRender = useRef(true);
-
-	useEffect(() => {
-		firstRender.current = false;
-	}, []);
-
-	return firstRender.current;
-};
-
-const getListTableServerFn = createServerFn()
-	.inputValidator(
-		z.custom<{ dataProviderName: keyof DataProviders } & BaseQueryKey>(),
-	)
-	.handler(async (data) => {
-		const { dataProviderName, resource, pagination, filters, sorters, meta } =
-			data.data;
-		const { data: listData, metadata } = await dataProviders[
-			dataProviderName as keyof DataProviders
-		].getList({
-			resource: resource as Exclude<typeof resource, undefined>,
-			pagination: pagination,
-			filters: filters,
-			sorters: sorters,
-			meta: meta,
-		});
-
-		return { data: listData as any[], metadata };
-	});

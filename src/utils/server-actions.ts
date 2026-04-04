@@ -1,30 +1,20 @@
-import {
-	deleteCookie,
-	getCookie,
-	setCookie,
-} from "@tanstack/react-start/server";
+import { createServerFn } from "@tanstack/react-start";
+import z from "zod";
 import type { CookieTypeServer } from "@/types";
+import {
+	deleteCookiesServerFn,
+	getCookiesServerFn,
+	setCookiesServerFn,
+} from "./helper.server";
 
-export async function setCookies(cookieItems: CookieTypeServer[]) {
-	cookieItems.forEach(({ name, value, ...cookieOptions }) => {
-		setCookie(name, value, {
-			httpOnly: true,
-			secure: true,
-			path: "/",
-			...cookieOptions,
-		});
-	});
-}
+export const setCookies = createServerFn({ method: "POST" })
+	.inputValidator(z.custom<CookieTypeServer[]>())
+	.handler(async ({ data }) => setCookiesServerFn(data));
 
-export async function getCookies(keys: string[]) {
-	return keys.map((key) => ({
-		name: key,
-		value: getCookie(key),
-	}));
-}
+export const getCookies = createServerFn({ method: "GET" })
+	.inputValidator(z.array(z.string()))
+	.handler(async ({ data }) => getCookiesServerFn(data));
 
-export async function deleteCookies(
-	cookies: Omit<CookieTypeServer, "value">[],
-) {
-	cookies.map((c) => deleteCookie(c.name, { path: "/", ...c }));
-}
+export const deleteCookies = createServerFn({ method: "POST" })
+	.inputValidator(z.array(z.object({ name: z.string() })))
+	.handler(async ({ data }) => deleteCookiesServerFn(data));
