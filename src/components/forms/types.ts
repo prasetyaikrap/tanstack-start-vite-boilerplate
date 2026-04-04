@@ -1,12 +1,16 @@
 import type { FieldLabelProps, FieldRootProps } from "@chakra-ui/react";
-import type { UseFormReturn } from "react-hook-form";
+import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
 
-export type BaseFormInputProps = {
-  id: string;
-  label: string;
-  formProps: UseFormReturn;
-  floatingLabel?: boolean;
-  fieldProps?: FieldRootProps;
-  labelProps?: FieldLabelProps;
-  loading?: boolean;
+export type BaseFormInputProps<
+	TFieldValues extends FieldValues = FieldValues,
+	TContext = any,
+	TTransformValue = TFieldValues,
+> = {
+	id: Path<TFieldValues>;
+	label: string;
+	formProps: UseFormReturn<TFieldValues, TContext, TTransformValue>;
+	floatingLabel?: boolean;
+	fieldProps?: FieldRootProps;
+	labelProps?: FieldLabelProps;
+	loading?: boolean;
 };

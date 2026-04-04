@@ -1,5 +1,3 @@
-"use client";
-
 import {
 	Center,
 	createListCollection,
@@ -19,7 +17,7 @@ import { PortalWrapper } from "@/components/ui/portal-wrapper";
 import type { BaseSelectOptions } from "@/types";
 import type { BaseFormInputProps } from "./types";
 
-type FormSelectProps = {
+type FormSelectProps<TFieldValues extends FieldValues = FieldValues> = {
 	options: BaseSelectOptions[];
 	placeholder?: string;
 	selectProps?: Omit<SelectRootProps, "collection" | "name" | "value">;
@@ -28,9 +26,9 @@ type FormSelectProps = {
 	portal?: boolean;
 	render?: (option: BaseSelectOptions) => ReactNode;
 	selectedRender?: (option: BaseSelectOptions[]) => ReactNode;
-} & BaseFormInputProps;
+} & BaseFormInputProps<TFieldValues, any, TFieldValues>;
 
-export function FormSelect({
+export function FormSelect<TFieldValues extends FieldValues = FieldValues>({
 	id,
 	label,
 	formProps,
@@ -46,15 +44,24 @@ export function FormSelect({
 	onChangeValue,
 	loading = false,
 	floatingLabel = false,
-}: FormSelectProps) {
+}: FormSelectProps<TFieldValues>) {
 	const {
 		watch,
 		control,
-		formState: { errors },
+		formState: { errors, defaultValues },
 	} = formProps;
+	const [initialOptions] = useState<BaseSelectOptions[]>(() => {
+		if (!defaultValues?.[id] || !Array.isArray(defaultValues?.[id]))
+			return options;
+		const currentValues = defaultValues?.[id] as BaseSelectOptions[];
+		const optionsFromFormValue = currentValues.filter(
+			(opt) => !options.some((o) => o.value === opt.value),
+		);
+		return [...options, ...optionsFromFormValue];
+	});
 
 	const selectOptions = createListCollection({
-		items: options.map((opt) => ({
+		items: initialOptions.map((opt) => ({
 			value: opt.value,
 			label: opt.label,
 			description: opt.description || "",

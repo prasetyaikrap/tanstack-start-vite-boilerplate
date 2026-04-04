@@ -12,12 +12,17 @@ import { format, formatISO, parseISO } from "date-fns";
 import { Calendar, CircleX } from "lucide-react";
 import { useState } from "react";
 import { DayPicker, type DayPickerProps } from "react-day-picker";
-import { type Control, Controller, type FieldValues } from "react-hook-form";
-import { PortalWrapper } from "@/components/ui/portal-wrapper";
+import {
+	type Control,
+	Controller,
+	type FieldValues,
+	type PathValue,
+} from "react-hook-form";
 import customDaypickerStyles from "@/styles/daypicker.module.css";
+import { PortalWrapper } from "../ui/portal-wrapper";
 import type { BaseFormInputProps } from "./types";
 
-type FormDaypickerProps = {
+type FormDaypickerProps<TFieldValues extends FieldValues = FieldValues> = {
 	daypickerProps?: Omit<DayPickerProps, "mode">;
 	menuProps?: Omit<PopoverRootProps, "children">;
 	triggerProps?: ButtonProps;
@@ -25,9 +30,9 @@ type FormDaypickerProps = {
 	portal?: boolean;
 	clearable?: boolean;
 	dateFormat?: string;
-} & BaseFormInputProps;
+} & BaseFormInputProps<TFieldValues, any, TFieldValues>;
 
-export function FormDaypicker({
+export function FormDaypicker<TFieldValues extends FieldValues = FieldValues>({
 	id,
 	label,
 	formProps,
@@ -41,7 +46,7 @@ export function FormDaypicker({
 	triggerProps,
 	dateFormat = "dd MMMM yyyy",
 	clearable = true,
-}: FormDaypickerProps) {
+}: FormDaypickerProps<TFieldValues>) {
 	const {
 		setValue,
 		control,
@@ -105,7 +110,13 @@ export function FormDaypicker({
 													cursor="pointer"
 													onClick={(e) => {
 														e.stopPropagation();
-														setValue(id, "");
+														setValue(
+															id,
+															"" as unknown as PathValue<
+																TFieldValues,
+																typeof id
+															>,
+														);
 													}}
 												/>
 											)}

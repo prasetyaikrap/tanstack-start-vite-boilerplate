@@ -1,6 +1,6 @@
 import { redirect } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { authProvider } from "@/providers/authentications";
+import { useResourceContext } from "./resource-provider";
 
 type AuthenticatedProps = {
 	children: ReactNode;
@@ -13,6 +13,7 @@ export async function Authenticated({
 	resource = "",
 	redirectTo,
 }: AuthenticatedProps) {
+	const { authProvider } = useResourceContext();
 	const { authenticated, redirectTo: authRedirect } = await authProvider.check({
 		resource,
 	});

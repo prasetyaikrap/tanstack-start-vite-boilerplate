@@ -164,6 +164,23 @@ export function generateMetadata(meta: Metadata) {
 	return { metas, links };
 }
 
+export function generateGoogleAdsenseMetadata(
+	pid: string,
+): React.DetailedHTMLProps<
+	React.ScriptHTMLAttributes<HTMLScriptElement>,
+	HTMLScriptElement
+>[] {
+	if (!pid) return [];
+
+	return [
+		{
+			async: true,
+			src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${pid}`,
+			crossOrigin: "anonymous",
+		},
+	];
+}
+
 function generateOpenGraphMetadata(openGraph: Metadata["openGraph"]) {
 	const ogMetas: React.DetailedHTMLProps<
 		React.MetaHTMLAttributes<HTMLMetaElement>,
