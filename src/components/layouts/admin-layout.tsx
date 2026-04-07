@@ -10,12 +10,14 @@ import {
   LinkOverlay,
   Span,
   Stack,
-  useBreakpointValue,
+  useMediaQuery,
+  IconButton,
 } from "@chakra-ui/react";
 import { ReactNode, useEffect, useState } from "react";
 import { useMenu } from "@/hooks/useMenu";
 import { CanAccess } from "./can-access";
 import { Link } from "@tanstack/react-router";
+import { ChevronRightIcon, ChevronLeftIcon } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -26,19 +28,16 @@ export default function AdminLayout({
 }>) {
   const refineMenu = useMenu();
   const [collapsed, setCollapsed] = useState(false);
-  const isSmallScreen = useBreakpointValue({
-    base: true,
-    sm: true,
-    md: true,
-    lg: false,
-    xl: false,
-    "2xl": false,
-  });
+  const [isSmallScreen] = useMediaQuery(["(max-width: 768px)"]);
 
   useEffect(() => {
     if (isSmallScreen === undefined) return;
     setCollapsed(isSmallScreen);
   }, [isSmallScreen]);
+
+  const toggleCollapsed = (isCollapsed?: boolean) => {
+    setCollapsed((prev) => (isCollapsed !== undefined ? isCollapsed : !prev));
+  };
 
   return (
     <Stack
@@ -48,8 +47,18 @@ export default function AdminLayout({
       pl={collapsed ? "90px" : "250px"}
       transition="all ease .5s"
     >
-      <Header menuProps={refineMenu} collapsed={collapsed} group={group} />
-      <Sidebar menuProps={refineMenu} collapsed={collapsed} group={group} />
+      <Header
+        menuProps={refineMenu}
+        collapsed={collapsed}
+        toggleCollapsed={toggleCollapsed}
+        group={group}
+      />
+      <Sidebar
+        menuProps={refineMenu}
+        collapsed={collapsed}
+        toggleCollapsed={toggleCollapsed}
+        group={group}
+      />
       <Container p="16px">{children}</Container>
     </Stack>
   );
@@ -58,6 +67,7 @@ export default function AdminLayout({
 type HeaderProps = {
   menuProps: ReturnType<typeof useMenu>;
   collapsed: boolean;
+  toggleCollapsed: (isCollapsed?: boolean) => void;
   group: string;
 };
 
@@ -89,10 +99,16 @@ function Header({ collapsed }: HeaderProps) {
 type SideBarProps = {
   menuProps: ReturnType<typeof useMenu>;
   collapsed: boolean;
+  toggleCollapsed: (isCollapsed?: boolean) => void;
   group: string;
 };
 
-function Sidebar({ menuProps, collapsed, group }: SideBarProps) {
+function Sidebar({
+  menuProps,
+  collapsed,
+  toggleCollapsed,
+  group,
+}: SideBarProps) {
   const { menuItems } = menuProps;
   const groupMenuItems = group
     ? menuItems.filter((item) => item.meta?.group === group)
@@ -111,6 +127,21 @@ function Sidebar({ menuProps, collapsed, group }: SideBarProps) {
       transition="all ease .5s"
       _dark={{ bgColor: "blackAlpha.800" }}
     >
+      <IconButton
+        aria-label="sidebar-collapse-toggle"
+        position="absolute"
+        top="2em"
+        right="-2.2em"
+        color="blackAlpha.800"
+        bgColor="white"
+        _dark={{ bgColor: "blackAlpha.800", color: "white" }}
+        shadow="sm"
+        size="xs"
+        onClick={() => toggleCollapsed()}
+        transition="all ease .5s"
+      >
+        {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+      </IconButton>
       <Stack
         direction="row"
         alignItems="center"
@@ -119,7 +150,7 @@ function Sidebar({ menuProps, collapsed, group }: SideBarProps) {
         transition="all ease .5s"
       >
         <ChakraLink asChild display="flex" variant="plain">
-          <Link to="/" target="_blank">
+          <Link to="/dashboard" target="_blank">
             <Image
               src="/logo-app.png"
               alt="Tanstack Start"
@@ -148,6 +179,7 @@ function Sidebar({ menuProps, collapsed, group }: SideBarProps) {
             item={item}
             collapsed={collapsed}
             menuProps={menuProps}
+            toggleCollapsed={toggleCollapsed}
           />
         ))}
       </Stack>
@@ -159,10 +191,17 @@ type MenuItemProps = {
   item: ReturnType<typeof useMenu>["menuItems"][number];
   menuProps: ReturnType<typeof useMenu>;
   collapsed: boolean;
+  toggleCollapsed: (isCollapsed?: boolean) => void;
   parents?: string[];
 };
 
-function MenuItem({ item, menuProps, collapsed, parents = [] }: MenuItemProps) {
+function MenuItem({
+  item,
+  menuProps,
+  collapsed,
+  toggleCollapsed,
+  parents = [],
+}: MenuItemProps) {
   const { selectedKey, defaultOpenKeys, pathParams } = menuProps;
   const fontSize = "1rem";
   const isSelected = selectedKey.includes(item.key);
@@ -191,6 +230,9 @@ function MenuItem({ item, menuProps, collapsed, parents = [] }: MenuItemProps) {
               cursor="pointer"
               bgColor={isSelected ? "blue.50" : "transparent"}
               _hover={{ bgColor: "blue.50" }}
+              onClick={() => {
+                if (collapsed) toggleCollapsed(false);
+              }}
             >
               <Span
                 display="flex"
@@ -214,6 +256,7 @@ function MenuItem({ item, menuProps, collapsed, parents = [] }: MenuItemProps) {
                     menuProps={menuProps}
                     parents={[...parents, item.name]}
                     collapsed={collapsed}
+                    toggleCollapsed={toggleCollapsed}
                   />
                 ))}
               </Accordion.ItemBody>
@@ -245,6 +288,10 @@ function MenuItem({ item, menuProps, collapsed, parents = [] }: MenuItemProps) {
         bgColor={isSelected ? "blue.50" : "transparent"}
         _hover={{ bgColor: "blue.50" }}
         transition="all ease .5s"
+        cursor="pointer"
+        onClick={() => {
+          if (collapsed) toggleCollapsed(false);
+        }}
       >
         {item.meta?.icon}
         {!collapsed && (
