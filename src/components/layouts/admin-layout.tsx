@@ -165,7 +165,7 @@ type MenuItemProps = {
 function MenuItem({ item, menuProps, collapsed, parents = [] }: MenuItemProps) {
   const { selectedKey, defaultOpenKeys, pathParams } = menuProps;
   const fontSize = "1rem";
-  const isSelected = selectedKey === item.key;
+  const isSelected = selectedKey.includes(item.key);
   const hasChildren = item.children.length > 0;
 
   if (hasChildren) {
@@ -189,6 +189,7 @@ function MenuItem({ item, menuProps, collapsed, parents = [] }: MenuItemProps) {
               fontSize={fontSize}
               p="10px 20px"
               cursor="pointer"
+              bgColor={isSelected ? "blue.50" : "transparent"}
               _hover={{ bgColor: "blue.50" }}
             >
               <Span

@@ -23,7 +23,7 @@ export type UseMenuOptions = {
 
 export type UseMenuReturn = {
   menuItems: MenuItem[];
-  selectedKey: string;
+  selectedKey: string[];
   defaultOpenKeys: string[];
   pathParams: Record<string, string>;
 };
@@ -70,43 +70,43 @@ export function useMenu(): UseMenuReturn {
   }, [menuProvider]);
 
   const selectedKey = useMemo(() => {
-    const findSelected = (items: MenuItem[]): string => {
-      for (const item of items) {
-        if (item.children.length > 0) {
-          const found = findSelected(item.children);
-          if (found) return found;
-        }
-      }
+    type Match = { keys: string[]; patternLength: number };
+
+    const findAllMatches = (
+      items: MenuItem[],
+      ancestors: string[] = [],
+    ): Match[] => {
+      const matches: Match[] = [];
       for (const item of items) {
         if (
           item.path &&
           pathMatchesLocation(item.path as string, location.pathname)
         ) {
-          return item.key;
+          matches.push({
+            keys: [...ancestors, item.key],
+            patternLength: (item.path as string).length,
+          });
+        }
+        if (item.children.length > 0) {
+          matches.push(
+            ...findAllMatches(item.children, [...ancestors, item.key]),
+          );
         }
       }
-      return "";
+      return matches;
     };
 
-    return findSelected(menuItems);
+    const allMatches = findAllMatches(menuItems);
+    if (allMatches.length === 0) return [];
+    // Most specific match = longest path pattern
+    allMatches.sort((a, b) => b.patternLength - a.patternLength);
+    return allMatches[0].keys;
   }, [menuItems, location.pathname]);
 
   const defaultOpenKeys = useMemo(() => {
-    const findParents = (items: MenuItem[], targetKey: string): string[] => {
-      for (const item of items) {
-        if (item.children.length > 0) {
-          const directMatch = item.children.some((c) => c.key === targetKey);
-          if (directMatch) return [item.name];
-          const nestedMatch = findParents(item.children, targetKey);
-          if (nestedMatch.length > 0) return [item.name, ...nestedMatch];
-        }
-      }
-      return [];
-    };
-
-    if (!selectedKey) return [];
-    return findParents(menuItems, selectedKey);
-  }, [menuItems, selectedKey]);
+    // All matched keys except the leaf are parent/ancestor keys that should be open
+    return selectedKey.slice(0, -1);
+  }, [selectedKey]);
 
   return { menuItems, selectedKey, defaultOpenKeys, pathParams: params };
 }
