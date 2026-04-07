@@ -1,9 +1,9 @@
-import { defineConfig } from 'vite'
-import { devtools } from '@tanstack/devtools-vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import viteReact from '@vitejs/plugin-react'
-import viteTsConfigPaths from 'vite-tsconfig-paths'
-import { nitro } from 'nitro/vite'
+import { defineConfig } from "vite";
+import { devtools } from "@tanstack/devtools-vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import viteTsConfigPaths from "vite-tsconfig-paths";
+import { nitro } from "nitro/vite";
 
 const config = defineConfig({
   server: {
@@ -14,11 +14,16 @@ const config = defineConfig({
     nitro(),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
-      projects: ['./tsconfig.json'],
+      projects: ["./tsconfig.json"],
     }),
-    tanstackStart(),
+    tanstackStart({
+      router: {
+        routeFileIgnorePattern:
+          "components|utils|hooks|types|type|schema|constants",
+      },
+    }),
     viteReact(),
   ],
-})
+});
 
-export default config
+export default config;
