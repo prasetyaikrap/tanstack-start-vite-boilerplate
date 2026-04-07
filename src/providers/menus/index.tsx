@@ -1,7 +1,7 @@
 import { LayoutDashboard } from "lucide-react";
 import { MenuProvider } from "./type";
 
-const defaultMenus: MenuProvider[] = [
+export const menus: MenuProvider[] = [
   {
     name: "dashboard",
     meta: {
@@ -11,7 +11,3 @@ const defaultMenus: MenuProvider[] = [
     path: "/dashboard",
   },
 ];
-
-export const menus = {
-  default: defaultMenus,
-};

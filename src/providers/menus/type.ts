@@ -24,6 +24,11 @@ export interface MenuProvider {
    * For example, if you want to set the route path to `/blog-posts`, you can set the `path` property to `/blog-posts`.
    */
   path?: MenuRoutePath;
+  /**
+   * To set permissions for the resource, you can set the `permissions` property. This property is an array of strings that represent the permissions required to access the resource.
+   * For example, if you want to restrict access to a resource to only users with the `admin` role, you can set the `permissions` property to `["admin"]`.
+   */
+  permissions?: string[];
 }
 
 export interface KnownMenuMeta {

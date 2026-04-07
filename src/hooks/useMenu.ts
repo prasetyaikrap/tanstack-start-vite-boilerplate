@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useLocation } from "@tanstack/react-router";
+import { useLocation, useParams } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import type { MenuProvider } from "@/providers/menus/type";
 import { useResourceContext } from "@/components/layouts/resource-provider";
@@ -25,10 +25,21 @@ export type UseMenuReturn = {
   menuItems: MenuItem[];
   selectedKey: string;
   defaultOpenKeys: string[];
+  pathParams: Record<string, string>;
 };
+
+function pathMatchesLocation(pattern: string, pathname: string): boolean {
+  const regexStr = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&") // escape special regex chars (not * or /)
+    .replace(/\\\$/g, "$") // unescape $ so we can detect $param
+    .replace(/\$[^/]+/g, "[^/]+"); // replace $param segments with wildcard
+  const regex = new RegExp(`^${regexStr}(/.*)?$`);
+  return regex.test(pathname);
+}
 
 export function useMenu(): UseMenuReturn {
   const location = useLocation();
+  const params = useParams({ strict: false });
   const { menuProvider } = useResourceContext();
 
   const menuItems = useMemo(() => {
@@ -67,7 +78,10 @@ export function useMenu(): UseMenuReturn {
         }
       }
       for (const item of items) {
-        if (item.path && location.pathname.startsWith(item.path as string)) {
+        if (
+          item.path &&
+          pathMatchesLocation(item.path as string, location.pathname)
+        ) {
           return item.key;
         }
       }
@@ -94,5 +108,5 @@ export function useMenu(): UseMenuReturn {
     return findParents(menuItems, selectedKey);
   }, [menuItems, selectedKey]);
 
-  return { menuItems, selectedKey, defaultOpenKeys };
+  return { menuItems, selectedKey, defaultOpenKeys, pathParams: params };
 }

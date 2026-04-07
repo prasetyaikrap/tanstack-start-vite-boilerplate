@@ -12,7 +12,7 @@ export default function AppProviders({
   children,
 }: Readonly<AppProvidersProps>) {
   return (
-    <ResourceProvider menuProvider={menus.default}>
+    <ResourceProvider menuProvider={menus}>
       <UISystemProvider>
         <Container
           minHeight="100vh"

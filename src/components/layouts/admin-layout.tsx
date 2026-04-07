@@ -15,11 +15,14 @@ import {
 import { ReactNode, useEffect, useState } from "react";
 import { useMenu } from "@/hooks/useMenu";
 import { CanAccess } from "./can-access";
+import { Link } from "@tanstack/react-router";
 
 export default function AdminLayout({
   children,
+  group = "",
 }: Readonly<{
   children: ReactNode;
+  group?: string;
 }>) {
   const refineMenu = useMenu();
   const [collapsed, setCollapsed] = useState(false);
@@ -42,11 +45,11 @@ export default function AdminLayout({
       position="relative"
       minH="100vh"
       pt="80px"
-      pl={collapsed ? "90px" : "300px"}
+      pl={collapsed ? "90px" : "250px"}
       transition="all ease .5s"
     >
-      <Header menuProps={refineMenu} collapsed={collapsed} />
-      <Sidebar menuProps={refineMenu} collapsed={collapsed} />
+      <Header menuProps={refineMenu} collapsed={collapsed} group={group} />
+      <Sidebar menuProps={refineMenu} collapsed={collapsed} group={group} />
       <Container p="16px">{children}</Container>
     </Stack>
   );
@@ -55,6 +58,7 @@ export default function AdminLayout({
 type HeaderProps = {
   menuProps: ReturnType<typeof useMenu>;
   collapsed: boolean;
+  group: string;
 };
 
 function Header({ collapsed }: HeaderProps) {
@@ -63,9 +67,9 @@ function Header({ collapsed }: HeaderProps) {
     <Stack
       position="fixed"
       top="0"
-      left={collapsed ? "90px" : "300px"}
+      left={collapsed ? "90px" : "250px"}
       direction="row"
-      width={`calc(100% - ${collapsed ? "90px" : "300px"})`}
+      width={`calc(100% - ${collapsed ? "90px" : "250px"})`}
       minH="80px"
       boxShadow="md"
       bgColor="white"
@@ -85,17 +89,21 @@ function Header({ collapsed }: HeaderProps) {
 type SideBarProps = {
   menuProps: ReturnType<typeof useMenu>;
   collapsed: boolean;
+  group: string;
 };
 
-function Sidebar({ menuProps, collapsed }: SideBarProps) {
+function Sidebar({ menuProps, collapsed, group }: SideBarProps) {
   const { menuItems } = menuProps;
+  const groupMenuItems = group
+    ? menuItems.filter((item) => item.meta?.group === group)
+    : menuItems;
 
   return (
     <Stack
       position="fixed"
       top="0"
       left="0"
-      width={collapsed ? "90px" : "300px"}
+      width={collapsed ? "90px" : "250px"}
       height="100vh"
       bgColor="white"
       boxShadow="md"
@@ -110,29 +118,31 @@ function Sidebar({ menuProps, collapsed }: SideBarProps) {
         p="20px"
         transition="all ease .5s"
       >
-        <ChakraLink display="flex" variant="plain" href="/" target="_blank">
-          <Image
-            src="/logo-app.png"
-            alt="Tanstack Start"
-            boxSize="40px"
-            bg="blue.900"
-            borderRadius="full"
-          />
-          {!collapsed && (
-            <Heading
-              as="h1"
-              fontSize="18px"
-              textWrap="nowrap"
-              overflow="hidden"
-              textOverflow="ellipsis"
-            >
-              Tanstack Start
-            </Heading>
-          )}
+        <ChakraLink asChild display="flex" variant="plain">
+          <Link to="/" target="_blank">
+            <Image
+              src="/logo-app.png"
+              alt="Tanstack Start"
+              boxSize="40px"
+              bg="blue.900"
+              borderRadius="full"
+            />
+            {!collapsed && (
+              <Heading
+                as="h1"
+                fontSize="18px"
+                textWrap="nowrap"
+                overflow="hidden"
+                textOverflow="ellipsis"
+              >
+                Tanstack Start
+              </Heading>
+            )}
+          </Link>
         </ChakraLink>
       </Stack>
       <Stack>
-        {menuItems.map((item) => (
+        {groupMenuItems.map((item) => (
           <MenuItem
             key={item.name}
             item={item}
@@ -153,7 +163,7 @@ type MenuItemProps = {
 };
 
 function MenuItem({ item, menuProps, collapsed, parents = [] }: MenuItemProps) {
-  const { selectedKey, defaultOpenKeys } = menuProps;
+  const { selectedKey, defaultOpenKeys, pathParams } = menuProps;
   const fontSize = "1rem";
   const isSelected = selectedKey === item.key;
   const hasChildren = item.children.length > 0;
@@ -238,9 +248,9 @@ function MenuItem({ item, menuProps, collapsed, parents = [] }: MenuItemProps) {
         {item.meta?.icon}
         {!collapsed && (
           <LinkOverlay asChild>
-            <ChakraLink href={item.path as string}>
+            <Link to={item.path as string} params={pathParams}>
               {item.meta?.label}
-            </ChakraLink>
+            </Link>
           </LinkOverlay>
         )}
       </LinkBox>
