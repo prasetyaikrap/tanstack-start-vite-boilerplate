@@ -31,10 +31,13 @@ const BaseIdResponse = z
   })
   .passthrough();
 
+const BlobResponse = z.instanceof(Blob);
+
 export const schema = {
   BaseMetadata,
   BaseResponse,
   BaseResponses,
   BaseIdResponse,
   BaseErrorResponse,
+  BlobResponse,
 };

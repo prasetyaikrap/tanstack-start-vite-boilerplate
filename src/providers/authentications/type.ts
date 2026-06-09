@@ -1,4 +1,9 @@
 import type { AppError } from "@/types";
+import type { DataProviders } from "../data/type";
+
+export type AuthProviderProps = {
+	authDataProvider: DataProviders["auth"];
+};
 
 export type CheckResponse = {
 	authenticated: boolean;

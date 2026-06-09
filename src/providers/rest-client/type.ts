@@ -27,7 +27,7 @@ export type RestConfig<RCParams, RCQuery, RCPayload> = Omit<
 	params?: RCParams;
 	query?: RCQuery;
 	payload?: RCPayload;
-	responseMode?: "json" | "text" | "blob";
+	responseMode?: "json" | "text" | "blob" | "stream";
 };
 
 export type RestResponse<T = unknown> = {

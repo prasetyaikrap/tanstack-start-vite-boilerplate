@@ -150,7 +150,7 @@ function Sidebar({
         transition="all ease .5s"
       >
         <ChakraLink asChild display="flex" variant="plain">
-          <Link to="/dashboard" target="_blank">
+          <Link to="/" target="_blank">
             <Image
               src="/logo-app.png"
               alt="Tanstack Start"

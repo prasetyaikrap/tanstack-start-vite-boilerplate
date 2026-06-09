@@ -58,6 +58,11 @@ export interface KnownMenuMeta {
    * To pass `icon` to the resource.
    */
   icon?: ReactNode;
+
+  /**
+   * To group the resource in the sidebar, set the `group` property to the name of the group.
+   */
+  groups?: string[];
 }
 
 export interface MenuMeta extends KnownMenuMeta {
