@@ -3,12 +3,13 @@ import {
 	type UseMutationResult,
 	useMutation,
 } from "@tanstack/react-query";
-import { useResourceContext } from "@/components/layouts/resource-provider";
+import { useResourceContext } from "@/contexts/resource-provider/context";
 import type {
 	CreateMetaQuery,
 	DataProvider,
 	DataProviders,
 } from "@/providers/data/type";
+import type { MutationError } from "@/types";
 
 export type UseCreateProps<
 	TData = unknown,
@@ -32,12 +33,6 @@ export type UseCreateReturnType<
 > = UseMutationResult<TData, TError, TVariables, TOnMutateResult>;
 
 type ExtractResourceKeys<T> = T extends DataProvider<infer R> ? R : never;
-type MutationError = {
-	success: boolean;
-	message: string;
-	data?: unknown;
-	error?: unknown;
-};
 
 export function useCreate<
 	TData = unknown,

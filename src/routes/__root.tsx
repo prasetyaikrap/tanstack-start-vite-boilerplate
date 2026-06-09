@@ -31,20 +31,28 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			scripts: [...googleAdsenseScript],
 		};
 	},
-
 	shellComponent: RootDocument,
 	notFoundComponent: NotFoundLayout,
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	const { getLocale } = useTranslation();
+	const { authProvider, menuProvider, dataProviders, rbacProvider } =
+		Route.useRouteContext();
 	return (
 		<html lang={getLocale()} suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>
 			<body>
-				<AppProviders>{children}</AppProviders>
+				<AppProviders
+					authProvider={authProvider}
+					menuProvider={menuProvider}
+					dataProviders={dataProviders}
+					rbacProvider={rbacProvider}
+				>
+					{children}
+				</AppProviders>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",
