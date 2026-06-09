@@ -1,10 +1,17 @@
-import { defineStyle, Field, Input, type InputProps } from "@chakra-ui/react";
+import {
+	defineStyle,
+	Field,
+	Input,
+	InputGroup,
+	type InputProps,
+} from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import type { FieldValues } from "react-hook-form";
 import type { BaseFormInputProps } from "./types";
 
 type FormInputProps<TFieldValues extends FieldValues = FieldValues> = {
 	inputProps?: InputProps;
+	inputGroupProps?: Omit<React.ComponentProps<typeof InputGroup>, "children">;
 	onValueChange?: (value: string) => void;
 } & BaseFormInputProps<TFieldValues, any, TFieldValues>;
 
@@ -15,6 +22,7 @@ export function FormInput<TFieldValues extends FieldValues = FieldValues>({
 	floatingLabel = false,
 	onValueChange,
 	inputProps,
+	inputGroupProps,
 	labelProps,
 	fieldProps,
 }: FormInputProps<TFieldValues>) {
@@ -57,18 +65,21 @@ export function FormInput<TFieldValues extends FieldValues = FieldValues>({
 					{label} <Field.RequiredIndicator />
 				</Field.Label>
 			)}
-			<Input
-				{...register(id)}
-				data-float={shouldFloat || undefined}
-				onFocus={() => {
-					setFocused(true);
-				}}
-				onBlur={() => {
-					setFocused(false);
-				}}
-				data-testid={`input_${id}`}
-				{...inputProps}
-			/>
+			<InputGroup {...inputGroupProps}>
+				<Input
+					{...register(id)}
+					data-float={shouldFloat || undefined}
+					onFocus={() => {
+						setFocused(true);
+					}}
+					onBlur={() => {
+						setFocused(false);
+					}}
+					data-testid={`input_${id}`}
+					{...inputProps}
+				/>
+			</InputGroup>
+
 			{floatingLabel && (
 				<Field.Label
 					{...labelProps}

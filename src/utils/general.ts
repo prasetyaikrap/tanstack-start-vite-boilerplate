@@ -73,3 +73,23 @@ export async function getCookies(keys: string[]) {
 export async function deleteCookies(keys: string[]) {
 	keys.map((key) => Cookies.remove(key));
 }
+
+// Date formatting utility
+export function formatDate(dateStr: string) {
+	return new Date(dateStr).toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	});
+}
+
+export function convertToSlug(text: string) {
+	return text
+		.normalize("NFD") // Separate accents from letters
+		.replace(/[\u0300-\u036f]/g, "") // Remove the accent marks
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, "-")
+		.replace(/[^\w-]+/g, "")
+		.replace(/--+/g, "-");
+}

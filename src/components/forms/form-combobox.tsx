@@ -13,7 +13,7 @@ import {
 	useFilter,
 	useListCollection,
 } from "@chakra-ui/react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { type Control, Controller, type FieldValues } from "react-hook-form";
 import type { BaseSelectOptions } from "@/types";
 import { PortalWrapper } from "../ui/portal-wrapper";
@@ -33,7 +33,7 @@ type FormComboboxProps<TFieldValues extends FieldValues = FieldValues> = {
 	renderResult?: boolean;
 } & BaseFormInputProps<TFieldValues, any, TFieldValues>;
 
-type ComboboxInputValueChangeProps = {
+export type ComboboxInputValueChangeProps = {
 	details: Combobox.InputValueChangeDetails;
 	set: (items: BaseSelectOptions[]) => void;
 	filter: (inputValue: string) => void;
@@ -81,6 +81,10 @@ export function FormCombobox<TFieldValues extends FieldValues = FieldValues>({
 		filter: contains,
 		limit: limit,
 	});
+
+	useEffect(() => {
+		set(options);
+	}, [options, set]);
 
 	const isExist = !loading && collection.items.length > 0;
 

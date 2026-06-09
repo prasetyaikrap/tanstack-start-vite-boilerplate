@@ -7,16 +7,17 @@ export type EmptyStateComponentProps = {
 	title?: string | ReactNode;
 	description?: string | ReactNode;
 	action?: ReactNode;
-};
+} & EmptyState.RootProps;
 
 export function EmptyStateComponent({
 	icon,
 	title,
 	description,
 	action,
+	...props
 }: EmptyStateComponentProps) {
 	return (
-		<EmptyState.Root>
+		<EmptyState.Root {...props}>
 			<EmptyState.Content>
 				<EmptyState.Indicator>{icon ?? <Search />}</EmptyState.Indicator>
 				<VStack textAlign="center">
