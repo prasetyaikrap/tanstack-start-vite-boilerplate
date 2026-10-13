@@ -88,7 +88,7 @@ export default function Table<T extends BaseRecord = BaseRecord>({
 				isLoading,
 				isDataEmpty: !isFetching && !isLoading && rowData.length <= 0,
 				isDataExist: rowData.length > 0,
-				total: refineMetadata?.total_rows,
+				total: refineMetadata?.total_count,
 				current: core.currentPage,
 				pageCount: core.pageCount,
 				setCurrent: core.setCurrentPage,

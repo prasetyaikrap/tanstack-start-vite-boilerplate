@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 import type { RestResponse } from "@/providers/rest-client/type";
-import type { BaseRecord } from "@/types";
+import type { ApiError, BaseRecord } from "@/types";
 import type {
 	CrudFilters,
 	CrudSorting,
@@ -8,12 +8,24 @@ import type {
 	Pagination,
 } from "@/types/pagination";
 import { HTTPError } from "@/utils/exceptions";
-import type { GetListMetaQuery, ResponseBody, ResponsesBody } from "./type";
+import type {
+	ErrorResponseBody,
+	GetListMetaQuery,
+	ResponseBody,
+	ResponsesBody,
+} from "./type";
+
+const REQUEST_ID_HEADER = "X-Request-Id";
 
 export function responseOk<T extends BaseRecord>(res: RestResponse) {
 	const responseBody = res.body as unknown as ResponseBody<T>;
 	if (res.status < 200 || res.status >= 300) {
-		throw new HTTPError(responseBody?.message, res.status, responseBody);
+		throw new HTTPError(
+			responseBody?.message,
+			res.status,
+			responseBody,
+			res.headers.get(REQUEST_ID_HEADER) ?? undefined,
+		);
 	}
 
 	return responseBody;
@@ -22,11 +34,16 @@ export function responseOk<T extends BaseRecord>(res: RestResponse) {
 export function responseBlobOk(res: RestResponse) {
 	const responseBody = res.body as unknown as Blob;
 	if (res.status < 200 || res.status >= 300) {
-		throw new HTTPError("Something went wrong", res.status, responseBody);
+		throw new HTTPError(
+			"Something went wrong",
+			res.status,
+			responseBody,
+			res.headers.get(REQUEST_ID_HEADER) ?? undefined,
+		);
 	}
 
 	return {
-		success: true,
+		code: res.status,
 		message: "File downloaded successfully",
 		data: responseBody,
 	};
@@ -35,62 +52,47 @@ export function responseBlobOk(res: RestResponse) {
 export function responsesOk<T extends BaseRecord>(res: RestResponse) {
 	const responsesBody = res.body as unknown as ResponsesBody<T>;
 	if (res.status < 200 || res.status >= 300) {
-		throw new HTTPError(responsesBody?.message, res.status, responsesBody);
+		throw new HTTPError(
+			responsesBody?.message,
+			res.status,
+			responsesBody,
+			res.headers.get(REQUEST_ID_HEADER) ?? undefined,
+		);
 	}
 
 	return responsesBody;
 }
 
-export function responseError(err: RestResponse | HTTPError) {
+// Normalizes any failure into ApiError: { code, message, data, error, requestId }.
+// error is the backend error detail ({ id, type, code, data }) when the backend sent one
+export function toApiError(err: RestResponse | HTTPError): ApiError {
 	if (err instanceof HTTPError) {
-		return Promise.reject({
-			success: false,
-			message: err.message,
+		const body = err.error as Partial<ErrorResponseBody> | undefined;
+		return {
+			code: err.statusCode,
+			message: err.message || "Something went wrong",
 			data: null,
-			error: err.error,
-		});
+			error: body?.error ?? body,
+			requestId: err.requestId,
+		};
 	}
-	const responseErrorBody = err.body;
-	return Promise.reject({
-		success: false,
-		message: (responseErrorBody as any)?.message || "Something went wrong",
+
+	const body = err.body as Partial<ErrorResponseBody> | undefined;
+	return {
+		code: err.status,
+		message: body?.message || "Something went wrong",
 		data: null,
-		error: responseErrorBody,
-	});
+		error: body?.error ?? body,
+		requestId: err.headers?.get(REQUEST_ID_HEADER) ?? undefined,
+	};
+}
+
+export function responseError(err: RestResponse | HTTPError) {
+	return Promise.reject(toApiError(err));
 }
 
 export function responsesError(err: RestResponse | HTTPError) {
-	if (err instanceof HTTPError) {
-		return Promise.reject({
-			success: false,
-			message: err.message,
-			data: null,
-			metadata: {
-				total_rows: 0,
-				total_page: 0,
-				current_page: 0,
-				per_page: 0,
-				previousCursor: "",
-				nextCursor: "",
-			},
-			error: err.error,
-		});
-	}
-	const responsesErrorBody = err.body;
-	return Promise.reject({
-		success: false,
-		message: (responsesErrorBody as any)?.message || "Something went wrong",
-		data: null,
-		metadata: {
-			total_rows: 0,
-			total_page: 0,
-			current_page: 0,
-			per_page: 0,
-			previousCursor: "",
-			nextCursor: "",
-		},
-		error: responsesErrorBody,
-	});
+	return Promise.reject(toApiError(err));
 }
 
 export function generateParams(
@@ -187,10 +189,9 @@ export function generateParams(
 export const resourceNotFoundError = {
 	status: 404,
 	body: {
-		success: false,
+		code: 404,
 		message: "Resource not found",
 		data: null,
-		error: "Resource not found",
 	},
 	headers: new Headers(),
 };

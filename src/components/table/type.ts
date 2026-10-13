@@ -10,6 +10,7 @@ import type { Column, Table } from "@tanstack/react-table";
 import type { ReactNode } from "react";
 import type { z } from "zod";
 import type { UseTableReturnType } from "@/hooks/useTable";
+import type { ResponseMetadata } from "@/providers/data/type";
 import type { BaseRecord, BaseSelectOptions } from "@/types";
 
 export type TablesProps<T extends BaseRecord = BaseRecord> = {
@@ -72,14 +73,7 @@ export type TablePaginationProps = {
 	mode?: "default" | "cursor";
 };
 
-export type RefineMetaQuery = {
-	total_rows: number;
-	total_page: number;
-	current_page: number;
-	per_page: number;
-	previous_cursor: string;
-	next_cursor: string;
-};
+export type RefineMetaQuery = ResponseMetadata;
 
 export type FiltersProps<TTableProps extends BaseRecord = BaseRecord> = {
 	reactTable: TablesProps<TTableProps>["reactTable"];

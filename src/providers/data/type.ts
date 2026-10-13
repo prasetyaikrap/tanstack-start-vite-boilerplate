@@ -20,26 +20,41 @@ export type AxiosMethodTypes =
 	| "put"
 	| "patch";
 
+// Mirrors the backend response envelope: { code, message, data }
 export type ResponseBody<TData = unknown> = {
-	success: boolean;
+	code: number;
 	message: string;
 	data: TData;
-	error?: Error;
+};
+
+export type ResponseMetadata = {
+	total_count: number;
+	total_page: number;
+	current_page: number;
+	per_page: number;
+	next_cursor?: string | null;
+	prev_cursor?: string | null;
 };
 
 export type ResponsesBody<TData = unknown> = {
-	success: boolean;
+	code: number;
 	message: string;
 	data: TData[];
-	metadata: {
-		total_rows: number;
-		total_page: number;
-		current_page: number;
-		per_page: number;
-		previousCursor: string;
-		nextCursor: string;
-	};
-	error?: Error;
+	metadata: ResponseMetadata;
+};
+
+// Backend error detail. id matches the server log line, so show it to users for support
+export type ErrorDetail = {
+	id: string;
+	type: string;
+	code: number;
+	data?: unknown;
+};
+
+export type ErrorResponseBody = {
+	code: number;
+	message: string;
+	error: ErrorDetail;
 };
 
 export type BaseAxiosClientResponse<T = unknown> = {

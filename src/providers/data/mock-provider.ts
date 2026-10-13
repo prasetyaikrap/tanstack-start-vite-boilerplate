@@ -41,16 +41,14 @@ export function mockProvider(): DataProvider<ResourceKeys> {
 							responsesOk({
 								status: 200,
 								body: {
-									success: true,
+									code: 200,
 									message: "Success",
 									data: res.body,
 									metadata: {
-										total_rows: 100,
+										total_count: 100,
 										total_page: 10,
 										current_page: pagination?.currentPage || 1,
 										per_page: pagination?.pageSize || 10,
-										previousCursor: "",
-										nextCursor: "",
 									},
 								},
 								headers: new Headers(),

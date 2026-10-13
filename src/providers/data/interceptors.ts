@@ -30,7 +30,7 @@ export async function authResponseInterceptor(
 	originalRequest: RequestInit,
 ) {
 	const isRenewToken =
-		new Headers(originalRequest.headers).get("X-Renew-Token") === "1";
+		new Headers(originalRequest.headers).get("X-Renew-Token") === "true";
 
 	if (res.status === 401 && !isRenewToken) {
 		const authService = new RestClient({
@@ -49,7 +49,7 @@ export async function authResponseInterceptor(
 					headers: {
 						"X-Client-Id": ENVS.APP_ID,
 						"X-Client-Version": ENVS.APP_VERSION,
-						"X-Renew-Token": "1",
+						"X-Renew-Token": "true",
 						"Content-Type": "application/json",
 						...(refreshToken?.value && {
 							Authorization: `Bearer ${refreshToken?.value}`,

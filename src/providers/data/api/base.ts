@@ -2,31 +2,38 @@ import z from "zod";
 
 const BaseMetadata = z
 	.object({
-		total_rows: z.number(),
+		total_count: z.number(),
 		current_page: z.number(),
 		total_page: z.number(),
 		per_page: z.number(),
-		previousCursor: z.string(),
-		nextCursor: z.string(),
+		next_cursor: z.string().nullish(),
+		prev_cursor: z.string().nullish(),
 	})
 	.passthrough();
 const BaseResponse = z
-	.object({ success: z.boolean(), message: z.string() })
+	.object({ code: z.number(), message: z.string() })
 	.passthrough();
 const BaseResponses = z
-	.object({ success: z.boolean(), message: z.string(), metadata: BaseMetadata })
+	.object({ code: z.number(), message: z.string(), metadata: BaseMetadata })
 	.passthrough();
 const BaseErrorResponse = z
 	.object({
-		success: z.boolean(),
+		code: z.number(),
 		message: z.string(),
-		error: z.object({}).passthrough(),
+		error: z
+			.object({
+				id: z.string(),
+				type: z.string(),
+				code: z.number(),
+				data: z.unknown(),
+			})
+			.passthrough(),
 	})
 	.passthrough();
 const BaseIdResponse = z
 	.object({
 		data: z.object({ id: z.string() }).passthrough(),
-		success: z.boolean(),
+		code: z.number(),
 		message: z.string(),
 	})
 	.passthrough();

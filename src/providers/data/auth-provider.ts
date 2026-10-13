@@ -13,7 +13,7 @@ import type {
 	AuthRenewResponse,
 	AuthVerifyResponse,
 } from "./api/type";
-import { responseError, responseOk, responsesError } from "./handler";
+import { resourceNotFoundError, responseError, responseOk } from "./handler";
 import {
 	authRequestInterceptor,
 	authResponseInterceptor,
@@ -40,26 +40,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 			//   filterMode: meta?.filterMode,
 			// });
 			return match({ resource }).otherwise(() =>
-				Promise.reject(
-					responsesError({
-						status: 500,
-						body: {
-							success: false,
-							message: "Resource not found",
-							data: null,
-							error: "Resource not found",
-							metadata: {
-								total_rows: 0,
-								total_page: 1,
-								current_page: 1,
-								per_page: 0,
-								previousCursor: "",
-								nextCursor: "",
-							},
-						},
-						headers: new Headers(),
-					}),
-				),
+				Promise.reject(responseError(resourceNotFoundError)),
 			);
 		},
 		getOne: async ({ resource }) => {
@@ -70,20 +51,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.then(responseOk)
 						.catch(responseError),
 				)
-				.otherwise(() =>
-					Promise.reject(
-						responsesError({
-							status: 500,
-							body: {
-								success: false,
-								message: "Resource not found",
-								data: null,
-								error: "Resource not found",
-							},
-							headers: new Headers(),
-						}),
-					),
-				);
+				.otherwise(() => Promise.reject(responseError(resourceNotFoundError)));
 		},
 		create: async ({ resource, variables }) => {
 			return match({ resource })
@@ -111,20 +79,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.then(responseOk)
 						.catch(responseError),
 				)
-				.otherwise(() =>
-					Promise.reject(
-						responsesError({
-							status: 500,
-							body: {
-								success: false,
-								message: "Resource not found",
-								data: null,
-								error: "Resource not found",
-							},
-							headers: new Headers(),
-						}),
-					),
-				);
+				.otherwise(() => Promise.reject(responseError(resourceNotFoundError)));
 		},
 		update: async ({ resource }) => {
 			return match({ resource })
@@ -134,20 +89,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.then(responseOk)
 						.catch(responseError),
 				)
-				.otherwise(() =>
-					Promise.reject(
-						responsesError({
-							status: 500,
-							body: {
-								success: false,
-								message: "Resource not found",
-								data: null,
-								error: "Resource not found",
-							},
-							headers: new Headers(),
-						}),
-					),
-				);
+				.otherwise(() => Promise.reject(responseError(resourceNotFoundError)));
 		},
 		delete: async ({ resource }) => {
 			return match({ resource })
@@ -157,20 +99,7 @@ export function authProvider(): DataProvider<ResourceKeys> {
 						.then(responseOk)
 						.catch(responseError),
 				)
-				.otherwise(() =>
-					Promise.reject(
-						responsesError({
-							status: 500,
-							body: {
-								success: false,
-								message: "Resource not found",
-								data: null,
-								error: "Resource not found",
-							},
-							headers: new Headers(),
-						}),
-					),
-				);
+				.otherwise(() => Promise.reject(responseError(resourceNotFoundError)));
 		},
 	};
 }

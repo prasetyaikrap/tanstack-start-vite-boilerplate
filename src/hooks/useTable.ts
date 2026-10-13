@@ -47,7 +47,8 @@ type QueryData<TQueryFnData> = {
 };
 
 type QueryError = {
-	success: boolean;
+	code: number;
+	requestId?: string;
 	data?: unknown;
 	message: string;
 	error?: unknown;
@@ -435,7 +436,7 @@ export function useTable<TQueryFnData extends BaseRecord = BaseRecord>({
 			result: {
 				data: queryResult.data?.data ?? (fallbackEmptyArray as TQueryFnData[]),
 				metadata: queryResult.data?.metadata,
-				total: queryResult.data?.metadata?.total_rows ?? 0,
+				total: queryResult.data?.metadata?.total_count ?? 0,
 			},
 			pageCount: queryResult.data?.metadata?.total_page ?? 0,
 			currentPage: pagination.currentPage ?? 1,

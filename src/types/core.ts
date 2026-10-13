@@ -9,7 +9,7 @@ import type { CookieSerializeOptions } from "cookie-es";
 import type { CookieAttributes } from "node_modules/@types/js-cookie";
 import type { ReactNode } from "react";
 import type { AuthProvider } from "@/providers/authentications";
-import type { DataProviders } from "@/providers/data/type";
+import type { DataProviders, ErrorDetail } from "@/providers/data/type";
 import type { MenuProvider } from "@/providers/menus/type";
 import type { RBACProvider } from "@/providers/rbac";
 
@@ -105,9 +105,13 @@ export type MyRouterContext = {
 	authState: AuthState;
 };
 
-export type MutationError = {
-	success: boolean;
+// Shape of every rejected API call (see providers/data/handler.ts)
+export type ApiError = {
+	code: number;
 	message: string;
 	data?: unknown;
-	error?: unknown;
+	error?: ErrorDetail | unknown;
+	requestId?: string;
 };
+
+export type MutationError = ApiError;

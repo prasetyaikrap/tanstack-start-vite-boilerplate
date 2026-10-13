@@ -127,7 +127,7 @@ export default class RestClient<T extends RestRouter = RestRouter> {
 							.with({ status: 204 }, async () => {
 								return Promise.resolve({
 									status: result.status,
-									body: { success: true, message: "No Content" } as R,
+									body: { code: 204, message: "No Content", data: null } as R,
 									headers: result.headers,
 								});
 							})
@@ -152,8 +152,9 @@ export default class RestClient<T extends RestRouter = RestRouter> {
 								return Promise.reject({
 									status: 500,
 									body: {
-										success: false,
+										code: 500,
 										message: "Internal Server Error",
+										data: null,
 										error: e,
 									},
 									headers: new Headers(),

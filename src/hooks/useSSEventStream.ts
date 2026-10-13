@@ -182,7 +182,7 @@ export function useSSEventStream<
 			const provider = dataProvider[dataProviderName];
 			if (!provider.stream) {
 				return Promise.reject({
-					success: false,
+					code: 500,
 					message: `Data provider "${dataProviderName}" does not support streaming`,
 				} as TError);
 			}
@@ -201,7 +201,7 @@ export function useSSEventStream<
 
 				if (!stream) {
 					return Promise.reject({
-						success: false,
+						code: 500,
 						message: "No stream returned from server",
 					} as TError);
 				}

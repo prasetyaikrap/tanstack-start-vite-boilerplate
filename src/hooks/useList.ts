@@ -49,7 +49,8 @@ type QueryData<TQueryFnData> = {
 };
 
 type QueryError = {
-	success: boolean;
+	code: number;
+	requestId?: string;
 	data?: unknown;
 	message: string;
 	error?: unknown;
