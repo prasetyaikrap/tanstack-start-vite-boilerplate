@@ -160,7 +160,10 @@ export default function Table<T extends BaseRecord = BaseRecord>({
 							interactive
 							{...chakra?.tableRootProps}
 						>
-							<ChakraTable.Header>
+							<ChakraTable.Header
+								bgColor="white"
+								_dark={{ bgColor: "teal.100" }}
+							>
 								{headerGroups.map((headerGroup) => {
 									return (
 										<ChakraTable.Row
@@ -176,7 +179,14 @@ export default function Table<T extends BaseRecord = BaseRecord>({
 														minW={header.column.columnDef.minSize}
 														maxW={header.column.columnDef.maxSize}
 														w={header.column.columnDef.size}
+														bg="teal.100"
+														color="teal.900"
+														borderColor="gray.200"
 														data-testid={`table-header_${header.column.id}`}
+														_dark={{
+															bg: "gray.900",
+															color: "white",
+														}}
 													>
 														<HStack justifyContent="space-between">
 															<Text

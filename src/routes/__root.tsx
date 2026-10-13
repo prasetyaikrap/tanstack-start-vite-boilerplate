@@ -37,22 +37,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
 	const { getLocale } = useTranslation();
-	const { authProvider, menuProvider, dataProviders, rbacProvider } =
-		Route.useRouteContext();
 	return (
 		<html lang={getLocale()} suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>
 			<body>
-				<AppProviders
-					authProvider={authProvider}
-					menuProvider={menuProvider}
-					dataProviders={dataProviders}
-					rbacProvider={rbacProvider}
-				>
-					{children}
-				</AppProviders>
+				<AppProviders>{children}</AppProviders>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",

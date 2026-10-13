@@ -1,5 +1,5 @@
 import { HStack, Text } from "@chakra-ui/react";
-import type { Cell } from "@tanstack/react-table";
+import { type Cell, flexRender } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { match } from "ts-pattern";
 import type { ExtendedColumnDef } from "@/types";
@@ -79,12 +79,5 @@ export function CellRender<T>({ cell }: CellRenderProps<T>) {
 				</Text>
 			);
 		})
-		.otherwise(() => {
-			const value = cell.getValue() as string | number;
-			return (
-				<Text w="full" textAlign={columnDef.textAlign}>
-					{value || "-"}
-				</Text>
-			);
-		});
+		.otherwise(() => flexRender(cell.column.columnDef.cell, cell.getContext()));
 }

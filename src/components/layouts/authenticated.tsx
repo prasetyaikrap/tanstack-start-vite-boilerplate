@@ -1,6 +1,6 @@
 import { redirect } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { useResourceContext } from "./resource-provider";
+import { useResourceContext } from "@/contexts/resource-provider/context";
 
 type AuthenticatedProps = {
 	children: ReactNode;

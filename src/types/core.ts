@@ -8,10 +8,7 @@ import type {
 import type { CookieSerializeOptions } from "cookie-es";
 import type { CookieAttributes } from "node_modules/@types/js-cookie";
 import type { ReactNode } from "react";
-import type { AuthProvider } from "@/providers/authentications";
-import type { DataProviders, ErrorDetail } from "@/providers/data/type";
-import type { MenuProvider } from "@/providers/menus/type";
-import type { RBACProvider } from "@/providers/rbac";
+import type { ErrorDetail } from "@/providers/data/type";
 
 export type BaseKey = string | number;
 export type BaseRecord<T extends BaseKey = BaseKey> = {
@@ -96,10 +93,6 @@ export type AuthState = {
 
 export type MyRouterContext = {
 	queryClient: QueryClient;
-	authProvider: AuthProvider;
-	menuProvider: MenuProvider[];
-	dataProviders: DataProviders;
-	rbacProvider: RBACProvider;
 
 	permissions: string[];
 	authState: AuthState;
