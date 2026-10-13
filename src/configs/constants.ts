@@ -1,1 +1,12 @@
-
+export const Z_INDEX_LEVEL = {
+	BACKGROUND: -1,
+	DEFAULT: 0,
+	LOWER: 1,
+	LOW: 2,
+	MID: 3,
+	HIGH: 4,
+	HIGHER: 5,
+	LAYOUT: 95,
+	OVERLAY: 97,
+	TOP: 99,
+};

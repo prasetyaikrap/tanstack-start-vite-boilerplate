@@ -1,13 +1,13 @@
 import { LayoutDashboard } from "lucide-react";
-import { MenuProvider } from "./type";
+import type { MenuProvider } from "./type";
 
 export const menus: MenuProvider[] = [
-  {
-    name: "dashboard",
-    meta: {
-      label: "Dashboard",
-      icon: <LayoutDashboard />,
-    },
-    path: "/dashboard",
-  },
+	{
+		name: "dashboard",
+		meta: {
+			label: "Dashboard",
+			icon: <LayoutDashboard />,
+		},
+		path: "/dashboard",
+	},
 ];

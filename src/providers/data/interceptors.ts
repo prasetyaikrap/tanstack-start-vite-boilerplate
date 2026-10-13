@@ -1,19 +1,20 @@
 import { COOKIES } from "@/configs/cookies";
 import { ENVS } from "@/configs/envs";
 import { HTTPError } from "@/utils/exceptions";
-import { getCookies, setCookies } from "@/utils/server-actions";
+import { deleteCookies, getCookies, setCookies } from "@/utils/server-actions";
 import RestClient from "../rest-client";
 import { authRouter } from "./api/auth-schema";
 import type { AuthRenewResponse } from "./api/type";
 
 export async function authRequestInterceptor(config: RequestInit) {
 	const [accessToken] = await getCookies({ data: [COOKIES.accessToken] });
+	const isFormData = config.body instanceof FormData;
 	const adjustedConfig: RequestInit = {
 		...config,
 		headers: {
 			"X-Client-Id": ENVS.APP_ID,
 			"X-Client-Version": ENVS.APP_VERSION,
-			"Content-Type": "application/json",
+			...(!isFormData && { "Content-Type": "application/json" }),
 			...(accessToken?.value && {
 				Authorization: `Bearer ${accessToken?.value}`,
 			}),
@@ -29,7 +30,7 @@ export async function authResponseInterceptor(
 	originalRequest: RequestInit,
 ) {
 	const isRenewToken =
-    new Headers(originalRequest.headers).get("X-Renew-Token") === "1";
+		new Headers(originalRequest.headers).get("X-Renew-Token") === "1";
 
 	if (res.status === 401 && !isRenewToken) {
 		const authService = new RestClient({
@@ -43,46 +44,49 @@ export async function authResponseInterceptor(
 		}
 
 		try {
-		const { status: renewStatus, body: renewBody } =
-			await authService.authRenew<AuthRenewResponse>({
-				headers: {
-					"X-Client-Id": ENVS.APP_ID,
-					"X-Client-Version": ENVS.APP_VERSION,
-					"X-Renew-Token": "1",
-					"Content-Type": "application/json",
-					...(refreshToken?.value && {
-					Authorization: `Bearer ${refreshToken?.value}`,
-					}),
-				},
-				cache: "no-store",
+			const { status: renewStatus, body: renewBody } =
+				await authService.authRenew<AuthRenewResponse>({
+					headers: {
+						"X-Client-Id": ENVS.APP_ID,
+						"X-Client-Version": ENVS.APP_VERSION,
+						"X-Renew-Token": "1",
+						"Content-Type": "application/json",
+						...(refreshToken?.value && {
+							Authorization: `Bearer ${refreshToken?.value}`,
+						}),
+					},
+					cache: "no-store",
+				});
+
+			if (renewStatus !== 200) {
+				throw new HTTPError(
+					`Failed to renew token: ${renewBody.message}`,
+					renewStatus,
+					renewBody.data,
+				);
+			}
+
+			const { access_token, refresh_token } = renewBody.data;
+			await setCookies({
+				data: [
+					{ name: COOKIES.accessToken, value: access_token },
+					{ name: COOKIES.refreshToken, value: refresh_token },
+				],
 			});
 
-		if (renewStatus !== 200) {
-			throw new HTTPError(
-			`Failed to renew token: ${renewBody.message}`,
-			renewStatus,
-			renewBody.data,
-			);
-		}
-
-		const { access_token, refresh_token } = renewBody.data;
-		await setCookies({
-			data: [
-			{ name: COOKIES.accessToken, value: access_token },
-			{ name: COOKIES.refreshToken, value: refresh_token },
-			],
-		});
-
-		const newRequest: RequestInit = {
-			...originalRequest,
-			headers: {
-			...originalRequest.headers,
-			Authorization: `Bearer ${access_token}`,
-			},
-		};
+			const newRequest: RequestInit = {
+				...originalRequest,
+				headers: {
+					...originalRequest.headers,
+					Authorization: `Bearer ${access_token}`,
+				},
+			};
 			return await fetch(res.url, newRequest);
 		} catch (e) {
 			console.error(e);
+			await deleteCookies({
+				data: [{ name: COOKIES.accessToken }, { name: COOKIES.refreshToken }],
+			});
 		}
 	}
 

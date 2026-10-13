@@ -1,6 +1,5 @@
 import type {
 	AuthActionResponse,
-	AuthProviderProps,
 	AuthProviderReturnType,
 	CheckResponse,
 } from "./type";
@@ -18,10 +17,7 @@ type LoginParams = {
 type CheckParams = {} & BaseParams;
 
 export class AuthProvider implements AuthProviderReturnType {
-	private payload: AuthProviderProps;
-	constructor(payload: AuthProviderProps) {
-		this.payload = payload;
-
+	constructor() {
 		this.login = this.login.bind(this);
 		this.check = this.check.bind(this);
 		this.logout = this.logout.bind(this);

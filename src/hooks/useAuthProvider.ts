@@ -1,4 +1,4 @@
-import { useResourceContext } from "@/components/layouts/resource-provider";
+import { useResourceContext } from "@/contexts/resource-provider/context";
 
 export function useAuthProvider() {
 	const { authProvider } = useResourceContext();
