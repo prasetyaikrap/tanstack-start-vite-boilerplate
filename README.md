@@ -14,6 +14,8 @@ A starter template for building full-stack React applications with **TanStack St
 | Forms | [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/) |
 | API contracts | Zod schemas + a typed `RestClient` |
 | i18n | [i18next](https://www.i18next.com/) (`en`, `id`) |
+| Client state | [zustand](https://zustand.docs.pmnd.rs/) |
+| Realtime | [socket.io-client](https://socket.io/) |
 | Pattern matching | [ts-pattern](https://github.com/gvergnaud/ts-pattern) |
 | Lint / format | [Biome](https://biomejs.dev/) |
 | Tests | [Vitest](https://vitest.dev/) + Testing Library |
@@ -44,9 +46,11 @@ A starter template for building full-stack React applications with **TanStack St
 │   │   ├── authentications/          # AuthProvider (login / check / logout)
 │   │   ├── rbac/                     # Permission checks for routes and components
 │   │   ├── socket/                   # Shared socket.io connections (used by useSocket)
+│   │   ├── zustand/                  # createGlobalStore, createContextStore
 │   │   ├── menus/                    # Sidebar menu definition
 │   │   ├── i18n/                     # i18next setup
 │   │   └── tanstack-query/           # QueryClient + router context
+│   ├── stores/                       # zustand store modules (ui-store, selection-store examples)
 │   ├── types/                        # Shared types (ApiError, pagination, metadata, ...)
 │   ├── utils/                        # Server functions (cookies), API error helpers, metadata
 │   └── styles/
@@ -256,6 +260,65 @@ const chat = useSSEventStream<ChatInput, { token: { token: string }; complete: s
 chat.mutate({ message: "Hello" });
 chat.abort(); // cancel the in-flight stream
 ```
+
+## State Management (zustand)
+
+Server data belongs in TanStack Query (the data hooks). Use [zustand](https://zustand.docs.pmnd.rs/) for client state, through the two helpers in `src/providers/zustand`. Store modules live in `src/stores/` — copy one of the examples to start a new one.
+
+| Helper | Use for | Example |
+|---|---|---|
+| `createGlobalStore` | App-wide client state (UI preferences, feature flags). Optionally saved to `localStorage` / `sessionStorage` | `src/stores/ui-store.ts` — the admin sidebar's collapsed state, via `useSidebarCollapse` |
+| `createContextStore` | State per user, page or component tree — anything that starts from server data | `src/stores/selection-store.ts` |
+
+**Why two:** the app renders on the server, where a module-level store is shared by every request. Never put per-user data in a global store — use a context store, which is created once per provider (per request on the server).
+
+**Global store:**
+
+```ts
+// src/stores/ui-store.ts
+export const useUIStore = createGlobalStore<UIState>(
+	(set) => ({
+		sidebarCollapsed: false,
+		toggleSidebar: (collapsed) =>
+			set((state) => ({ sidebarCollapsed: collapsed ?? !state.sidebarCollapsed })),
+	}),
+	{ name: "ui", persist: { partialize: ({ sidebarCollapsed }) => ({ sidebarCollapsed }) } },
+);
+
+// in a component
+const collapsed = useUIStore((state) => state.sidebarCollapsed);
+const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+```
+
+Persisted stores render their initial state on the server and on the first client render (so hydration matches), then load the saved state right after — `AppProviders` does this with `usePersistedStoresHydration()`. Updates made before that (e.g. in an effect on mount) are kept in memory but not written, so they never overwrite the saved state. Storage keys are prefixed with `VITE_APP_ID`. Change the saved shape by bumping `persist.version` and handling old data in `persist.migrate`.
+
+**Context store:**
+
+```tsx
+// src/stores/selection-store.ts
+export const selectionStore = createContextStore<SelectionState, { selectedIds?: string[] }>(
+	"selection",
+	({ selectedIds = [] }) => (set) => ({
+		selectedIds,
+		toggle: (id) => set((state) => ({ selectedIds: [...state.selectedIds, id] })),
+	}),
+);
+
+// wrap the part of the tree that shares the state, with an initial value (e.g. from a loader)
+<selectionStore.StoreProvider initialState={{ selectedIds: [] }}>
+	<OrdersTable />
+</selectionStore.StoreProvider>
+
+// inside it
+const selectedIds = selectionStore.useStore((state) => state.selectedIds);
+```
+
+**Tips:**
+
+- Select only what a component needs (`useStore((state) => state.count)`) so it re-renders only when that changes.
+- To select several fields at once, wrap the selector in `useShallow` (re-exported from `@/providers/zustand`): `useStore(useShallow((state) => ({ a: state.a, b: state.b })))`.
+- Outside React (event handlers, socket listeners), use `useUIStore.getState()` / `.setState()`, or `selectionStore.useStoreApi()` for a context store.
+- Stores appear in Redux DevTools in development.
 
 ## Realtime (socket.io)
 

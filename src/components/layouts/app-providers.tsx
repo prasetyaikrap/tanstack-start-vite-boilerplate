@@ -1,6 +1,7 @@
 import { Container } from "@chakra-ui/react";
 import type { ReactNode } from "react";
 import ResourceProvider from "@/contexts/resource-provider";
+import { usePersistedStoresHydration } from "@/providers/zustand";
 import { UISystemProvider } from "./ui-system-provider";
 
 type AppProvidersProps = {
@@ -10,6 +11,9 @@ type AppProvidersProps = {
 export default function AppProviders({
 	children,
 }: Readonly<AppProvidersProps>) {
+	// Loads saved zustand state after the first render, so it matches the server-rendered HTML
+	usePersistedStoresHydration();
+
 	return (
 		<ResourceProvider>
 			<UISystemProvider>

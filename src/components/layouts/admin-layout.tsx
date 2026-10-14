@@ -11,12 +11,12 @@ import {
 	LinkOverlay,
 	Span,
 	Stack,
-	useMediaQuery,
 } from "@chakra-ui/react";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useMenu } from "@/hooks/useMenu";
+import { useSidebarCollapse } from "@/hooks/useSidebarCollapse";
 import { CanAccess } from "./can-access";
 
 export default function AdminLayout({
@@ -27,17 +27,7 @@ export default function AdminLayout({
 	group?: string;
 }>) {
 	const refineMenu = useMenu();
-	const [collapsed, setCollapsed] = useState(false);
-	const [isSmallScreen] = useMediaQuery(["(max-width: 768px)"]);
-
-	useEffect(() => {
-		if (isSmallScreen === undefined) return;
-		setCollapsed(isSmallScreen);
-	}, [isSmallScreen]);
-
-	const toggleCollapsed = (isCollapsed?: boolean) => {
-		setCollapsed((prev) => (isCollapsed !== undefined ? isCollapsed : !prev));
-	};
+	const { collapsed, toggleCollapsed } = useSidebarCollapse();
 
 	return (
 		<Stack
