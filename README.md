@@ -36,13 +36,14 @@ A starter template for building full-stack React applications with **TanStack St
 │   ├── configs/                      # envs, cookies, metadata, constants, permissions
 │   ├── contexts/resource-provider/   # Exposes auth/data/menu/RBAC providers to components
 │   ├── hooks/                        # useList, useOne, useCreate, useUpdate, useDelete, useTable,
-│   │                                 # useInfiniteList, useSSEventStream, usePermission, ...
+│   │                                 # useInfiniteList, useSSEventStream, useSocket, useSocketListener, ...
 │   ├── providers/
 │   │   ├── rest-client/              # Typed fetch client built from route contracts
 │   │   ├── data/                     # Data providers (one per API), interceptors, response handlers
 │   │   │   └── api/                  # Zod schemas + route contracts per API
 │   │   ├── authentications/          # AuthProvider (login / check / logout)
 │   │   ├── rbac/                     # Permission checks for routes and components
+│   │   ├── socket/                   # Shared socket.io connections (used by useSocket)
 │   │   ├── menus/                    # Sidebar menu definition
 │   │   ├── i18n/                     # i18next setup
 │   │   └── tanstack-query/           # QueryClient + router context
@@ -89,6 +90,7 @@ Set them in a `.env` file (all are optional). All variables are read in `src/con
 | `VITE_APP_ID` | `TANSTACK-VITE-BOILERPLATE` | Sent as `X-Client-Id` on every API request, and used to prefix cookie names. Must be allowed by the backend |
 | `VITE_APP_VERSION` | `dev-environment-v0.0.0` | Sent as `X-Client-Version` |
 | `VITE_APP_AUTH_SERVICE_HOST` | `http://localhost:4000` | Base URL of the authentication service |
+| `VITE_APP_SOCKET_HOST` | `http://localhost:4000` | socket.io server URL for `useSocket` |
 | `VITE_APP_USE_MOCK` | `false` | Reserved for a mock mode; not used yet |
 | `VITE_APP_GOOGLE_ADSENSE_ACCOUNT` | — | Enables Google AdSense scripts when set |
 
@@ -254,6 +256,34 @@ const chat = useSSEventStream<ChatInput, { token: { token: string }; complete: s
 chat.mutate({ message: "Hello" });
 chat.abort(); // cancel the in-flight stream
 ```
+
+## Realtime (socket.io)
+
+`useSocket` opens a [socket.io](https://socket.io/) connection in the browser and shares it between every component that uses the same URL; it closes when the last one unmounts. `useSocketListener` dispatches a channel's `{ event, data }` messages to one typed handler per event, and `useSocketEvent` listens to a single event.
+
+```tsx
+type NotificationEvents = {
+	order_created: { id: string };
+	order_cancelled: { id: string; reason: string };
+};
+
+const { socket, isConnected, error } = useSocket(ENVS.APP_SOCKET_HOST, {
+	auth: (cb) => cb({ token }), // sent on every (re)connect
+});
+
+useSocketListener<NotificationEvents>({
+	socket,
+	channel: "notification",
+	handlers: {
+		order_created: ({ id }) => refetchOrders(),
+	},
+});
+```
+
+- Handlers can be inline functions — they never cause a resubscribe.
+- `socket` is `null` during SSR and until the connection opens; the listener hooks wait for it.
+- Pass `enabled: false` to connect later (e.g. after login), and `key` to force a separate connection to the same URL.
+- Messages in another shape (e.g. `{ type, payload }`) work with `getEvent` / `getData`.
 
 ## Permissions and Menus
 
